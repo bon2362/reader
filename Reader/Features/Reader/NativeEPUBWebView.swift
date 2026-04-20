@@ -409,7 +409,18 @@ struct NativeEPUBWebView: NSViewRepresentable {
             }
         }, true);
 
+        function isEditableTarget(t) {
+            if (!t) return false;
+            var tag = (t.tagName || '').toLowerCase();
+            return tag === 'input' ||
+                tag === 'textarea' ||
+                tag === 'select' ||
+                t.isContentEditable ||
+                (t.closest && t.closest('[contenteditable="true"]'));
+        }
+
         document.addEventListener('keydown', function(e) {
+            if (isEditableTarget(e.target)) return;
             if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ' || e.code === 'Space') {
                 window.__reader.nextPage();
                 e.preventDefault();

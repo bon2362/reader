@@ -186,14 +186,17 @@ struct ReaderView: View {
         .focusEffectDisabled()
         .onAppear { isFocused = true }
         .onKeyPress(.leftArrow) {
+            guard canHandlePageKeyPress else { return .ignored }
             store.prevPage()
             return .handled
         }
         .onKeyPress(.rightArrow) {
+            guard canHandlePageKeyPress else { return .ignored }
             store.nextPage()
             return .handled
         }
         .onKeyPress(.space) {
+            guard canHandlePageKeyPress else { return .ignored }
             store.nextPage()
             return .handled
         }
@@ -225,6 +228,12 @@ struct ReaderView: View {
     }
 
     // MARK: - Floating controls
+
+    private var canHandlePageKeyPress: Bool {
+        store.stickyNotesStore.expandedId == nil
+            && !store.textNotesStore.isEditorPresented
+            && !store.searchStore.isVisible
+    }
 
     @ViewBuilder
     private var leftControls: some View {

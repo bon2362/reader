@@ -80,6 +80,7 @@ final class ReaderStore {
         currentPage = book.currentPage ?? 0
         totalPages = book.totalPages ?? 0
         currentPageInChapter = 0
+        annotationPanelStore.updateChapterPageCounts(book.chapterPageCounts ?? [])
         highlightsStore.reset()
         textNotesStore.reset()
         stickyNotesStore.reset()
@@ -191,6 +192,7 @@ extension ReaderStore: EPUBBridgeDelegate {
 
     func bridgeDidFinishPageCountPreflight(counts: [Int]) {
         isPageCountReady = true
+        annotationPanelStore.updateChapterPageCounts(counts)
         guard let book = currentBook, !counts.isEmpty else { return }
         let id = book.id
         Task.detached { [libraryRepository] in

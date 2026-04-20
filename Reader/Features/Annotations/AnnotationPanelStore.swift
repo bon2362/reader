@@ -11,6 +11,7 @@ final class AnnotationPanelStore {
     private let textNotesStore: TextNotesStore
     private let stickyNotesStore: StickyNotesStore
     private let tocStore: TOCStore
+    private var chapterPageCounts: [Int] = []
 
     init(
         highlightsStore: HighlightsStore,
@@ -27,6 +28,7 @@ final class AnnotationPanelStore {
     func toggleVisibility() { isVisible.toggle() }
     func show() { isVisible = true }
     func hide() { isVisible = false }
+    func updateChapterPageCounts(_ counts: [Int]) { chapterPageCounts = counts }
 
     var allItems: [AnnotationListItem] {
         var items: [AnnotationListItem] = []
@@ -38,6 +40,7 @@ final class AnnotationPanelStore {
                 preview: h.selectedText,
                 spineIndex: nil,
                 pageInChapter: nil,
+                globalPage: nil,
                 cfi: h.cfiStart,
                 color: h.color,
                 chapterLabel: nil,
@@ -52,6 +55,7 @@ final class AnnotationPanelStore {
                 preview: n.body,
                 spineIndex: nil,
                 pageInChapter: nil,
+                globalPage: nil,
                 cfi: n.cfiAnchor,
                 color: nil,
                 chapterLabel: nil,
@@ -66,6 +70,7 @@ final class AnnotationPanelStore {
                 preview: s.body,
                 spineIndex: s.spineIndex,
                 pageInChapter: s.pageInChapter,
+                globalPage: globalPage(spineIndex: s.spineIndex, pageInChapter: s.pageInChapter),
                 cfi: nil,
                 color: nil,
                 chapterLabel: nil,
@@ -97,5 +102,14 @@ final class AnnotationPanelStore {
             return "c\(cfi)"
         }
         return "z"
+    }
+
+    private func globalPage(spineIndex: Int, pageInChapter: Int) -> Int? {
+        guard spineIndex >= 0,
+              spineIndex < chapterPageCounts.count,
+              chapterPageCounts.prefix(spineIndex).allSatisfy({ $0 > 0 }) else {
+            return nil
+        }
+        return chapterPageCounts.prefix(spineIndex).reduce(0, +) + pageInChapter + 1
     }
 }

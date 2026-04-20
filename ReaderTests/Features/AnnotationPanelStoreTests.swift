@@ -89,7 +89,7 @@ struct AnnotationPanelStoreTests {
         let bridge = MockEPUBBridge()
         let store = ReaderStore(libraryRepository: lib, annotationRepository: ann, bridge: bridge)
 
-        let item = AnnotationListItem(id: "1", kind: .highlight, preview: "p", spineIndex: nil, pageInChapter: nil, cfi: "cfi-x", color: .yellow, chapterLabel: nil, createdAt: Date())
+        let item = AnnotationListItem(id: "1", kind: .highlight, preview: "p", spineIndex: nil, pageInChapter: nil, globalPage: nil, cfi: "cfi-x", color: .yellow, chapterLabel: nil, createdAt: Date())
         store.navigateToAnnotation(item)
         #expect(bridge.goToCFICalls == ["cfi-x"])
         #expect(bridge.goToSpineCalls.isEmpty)
@@ -102,7 +102,7 @@ struct AnnotationPanelStoreTests {
         let bridge = MockEPUBBridge()
         let store = ReaderStore(libraryRepository: lib, annotationRepository: ann, bridge: bridge)
 
-        let item = AnnotationListItem(id: "2", kind: .sticky, preview: "s", spineIndex: 5, pageInChapter: 3, cfi: nil, color: nil, chapterLabel: nil, createdAt: Date())
+        let item = AnnotationListItem(id: "2", kind: .sticky, preview: "s", spineIndex: 5, pageInChapter: 3, globalPage: 42, cfi: nil, color: nil, chapterLabel: nil, createdAt: Date())
         store.navigateToAnnotation(item)
         #expect(bridge.goToSpinePageCalls.count == 1)
         #expect(bridge.goToSpinePageCalls.first?.index == 5)
@@ -124,6 +124,18 @@ struct AnnotationPanelStoreTests {
         #expect(item.preview == "реальная sticky")
         #expect(item.spineIndex == 6)
         #expect(item.pageInChapter == 3)
+    }
+
+    @Test func stickyItemsExposeGlobalPageWhenCountsAreKnown() async throws {
+        let (panel, _, _, sn, _, lib, book) = try setup()
+        try await lib.insert(book)
+        await sn.loadForBook(bookId: book.id)
+        panel.updateChapterPageCounts([4, 5, 10])
+
+        await sn.createAt(spineIndex: 2, pageInChapter: 7)
+
+        let item = try #require(panel.allItems.first { $0.kind == .sticky })
+        #expect(item.globalPage == 17)
     }
 
     @Test func sortsStickiesBeforeCFIlessAndByCFI() async throws {
