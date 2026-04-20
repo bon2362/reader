@@ -10,6 +10,7 @@ final class StickyNotesStore {
 
     private let repository: AnnotationRepositoryProtocol
     private var bookId: String?
+    private var bodyWriteVersions: [String: Int] = [:]
 
     init(repository: AnnotationRepositoryProtocol) {
         self.repository = repository
@@ -28,6 +29,7 @@ final class StickyNotesStore {
         notes = []
         expandedId = nil
         bookId = nil
+        bodyWriteVersions = [:]
     }
 
     func createAt(spineIndex: Int, pageInChapter: Int = 0) async {
@@ -46,9 +48,16 @@ final class StickyNotesStore {
         guard let idx = notes.firstIndex(where: { $0.id == id }) else { return }
         var updated = notes[idx]
         updated.body = body
+        updated.updatedAt = Date()
+        let version = (bodyWriteVersions[id] ?? 0) + 1
+        bodyWriteVersions[id] = version
+        notes[idx] = updated
         do {
             try await repository.updatePageNote(updated)
-            notes[idx] = updated
+            if bodyWriteVersions[id] != version,
+               let latest = notes.first(where: { $0.id == id }) {
+                try await repository.updatePageNote(latest)
+            }
         } catch {
             errorMessage = "Не удалось обновить sticky-заметку"
         }
@@ -58,6 +67,7 @@ final class StickyNotesStore {
         do {
             try await repository.deletePageNote(id: id)
             notes.removeAll { $0.id == id }
+            bodyWriteVersions[id] = nil
             if expandedId == id { expandedId = nil }
         } catch {
             errorMessage = "Не удалось удалить sticky-заметку"

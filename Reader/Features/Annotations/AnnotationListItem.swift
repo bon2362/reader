@@ -11,6 +11,7 @@ struct AnnotationListItem: Identifiable, Hashable {
     let kind: AnnotationKind
     let preview: String
     let spineIndex: Int?
+    let pageInChapter: Int?
     let cfi: String?
     let color: HighlightColor?
     let chapterLabel: String?

@@ -37,6 +37,7 @@ final class AnnotationPanelStore {
                 kind: .highlight,
                 preview: h.selectedText,
                 spineIndex: nil,
+                pageInChapter: nil,
                 cfi: h.cfiStart,
                 color: h.color,
                 chapterLabel: nil,
@@ -50,6 +51,7 @@ final class AnnotationPanelStore {
                 kind: .note,
                 preview: n.body,
                 spineIndex: nil,
+                pageInChapter: nil,
                 cfi: n.cfiAnchor,
                 color: nil,
                 chapterLabel: nil,
@@ -63,6 +65,7 @@ final class AnnotationPanelStore {
                 kind: .sticky,
                 preview: s.body,
                 spineIndex: s.spineIndex,
+                pageInChapter: s.pageInChapter,
                 cfi: nil,
                 color: nil,
                 chapterLabel: nil,
@@ -88,7 +91,7 @@ final class AnnotationPanelStore {
 
     private func sortKey(_ item: AnnotationListItem) -> String {
         if let spine = item.spineIndex {
-            return String(format: "s%08d", spine)
+            return String(format: "s%08d:%08d", spine, item.pageInChapter ?? 0)
         }
         if let cfi = item.cfi {
             return "c\(cfi)"

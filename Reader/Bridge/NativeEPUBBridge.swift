@@ -246,8 +246,12 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
     }
 
     func goToSpine(index: Int) {
+        goToSpine(index: index, pageInChapter: 0)
+    }
+
+    func goToSpine(index: Int, pageInChapter: Int) {
         guard let book, index >= 0, index < book.chapters.count else { return }
-        loadChapter(at: index, restorePage: 0)
+        loadChapter(at: index, restorePage: max(0, pageInChapter))
     }
 
     func setCachedChapterPageCounts(_ counts: [Int]) {

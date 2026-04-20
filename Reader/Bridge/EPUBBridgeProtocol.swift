@@ -19,6 +19,7 @@ protocol EPUBBridgeProtocol: AnyObject {
     func getTOC()
     func setAnnotations(_ anchors: [AnnotationAnchor])
     func goToSpine(index: Int)
+    func goToSpine(index: Int, pageInChapter: Int)
     func setCachedChapterPageCounts(_ counts: [Int])
     func setPendingInitialCFI(_ cfi: String?)
     func goBackFromLink()

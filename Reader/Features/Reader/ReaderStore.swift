@@ -106,6 +106,8 @@ final class ReaderStore {
     func navigateToAnnotation(_ item: AnnotationListItem) {
         if let cfi = item.cfi, !cfi.isEmpty {
             bridge?.goToCFI(cfi)
+        } else if let spine = item.spineIndex, let page = item.pageInChapter {
+            bridge?.goToSpine(index: spine, pageInChapter: page)
         } else if let spine = item.spineIndex {
             bridge?.goToSpine(index: spine)
         }
