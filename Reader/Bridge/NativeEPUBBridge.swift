@@ -23,6 +23,7 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
     private var navStack: [NavFrame] = []
     // When non-nil after a link navigation, apply after ready
     private var pendingAnchorId: String?
+    private var pendingOffset: Int?
 
     // key: chapter href → list of [id, startOffset, endOffset, colorName]
     private var highlightsByChapter: [String: [StoredHighlight]] = [:]
@@ -40,6 +41,8 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
         let startOffset: Int
         let endOffset: Int
     }
+
+    var pageInCurrentChapter: Int { pageInChapter }
 
     init(webView: WKWebView, preflightView: WKWebView? = nil) {
         self.webView = webView
@@ -73,9 +76,12 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
                 self.pageInChapter = 0
                 self.totalInChapter = 1
                 self.highlightsByChapter = [:]
+                self.notesByChapter = [:]
                 self.preflightStarted = false
                 self.navStack = []
                 self.preflightComplete = false
+                self.pendingAnchorId = nil
+                self.pendingOffset = nil
 
                 // Use cached page counts if they match this book's chapter count.
                 if self.cachedPageCounts.count == loaded.chapters.count, !self.cachedPageCounts.isEmpty {
@@ -103,29 +109,48 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
                 var initialChapter = 0
                 var initialPage: Int? = nil
                 if let cfi = self.pendingInitialCFI, !cfi.isEmpty,
-                   let parsed = self.parseAnchor(cfi),
+                   let parsed = self.parseAnchor(cfi, defaultKind: .page),
                    let idx = loaded.chapterIndex(forHref: parsed.href) {
                     initialChapter = idx
-                    initialPage = parsed.offset
+                    switch parsed.kind {
+                    case .page:
+                        initialPage = parsed.value
+                    case .offset:
+                        self.pendingOffset = parsed.value
+                    }
                 }
                 self.pendingInitialCFI = nil
                 loadChapter(at: initialChapter, restorePage: initialPage)
                 // Preflight starts after the main webview reports its first `ready`
                 // (see handleReady) so we know it's laid out.
             } catch {
-                // Report through jsError channel indirectly via log; no direct error path
                 NSLog("[NativeEPUBBridge] Load failed: \(error.localizedDescription)")
+                self.delegate?.bridgeDidFailToLoadBook(message: error.localizedDescription)
             }
         }
     }
 
     func goToCFI(_ cfi: String) {
         guard let book else { return }
-        let parts = cfi.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
-        let hrefPart = String(parts.first ?? "")
-        let pagePart = parts.count > 1 ? Int(parts[1]) : nil
-        guard !hrefPart.isEmpty, let idx = book.chapterIndex(forHref: hrefPart) else { return }
-        loadChapter(at: idx, restorePage: pagePart)
+        let target = cfi.components(separatedBy: "||").first ?? cfi
+        guard let parsed = parseAnchor(target, defaultKind: .offset) else {
+            let href = EPUBBook.normalizeHref(target)
+            guard !href.isEmpty, let idx = book.chapterIndex(forHref: href) else { return }
+            loadChapter(at: idx, restorePage: 0)
+            return
+        }
+        guard let idx = book.chapterIndex(forHref: parsed.href) else { return }
+        switch parsed.kind {
+        case .page:
+            loadChapter(at: idx, restorePage: parsed.value)
+        case .offset:
+            if idx == currentChapterIndex {
+                goToOffset(parsed.value)
+            } else {
+                pendingOffset = parsed.value
+                loadChapter(at: idx, restorePage: 0)
+            }
+        }
     }
 
     func nextPage() {
@@ -145,14 +170,29 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
     }
 
     func search(query: String) {
-        delegate?.bridgeDidReceiveSearchResults([])
+        guard let book else {
+            delegate?.bridgeDidReceiveSearchResults([])
+            return
+        }
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            delegate?.bridgeDidReceiveSearchResults([])
+            return
+        }
+        Task { @MainActor [weak self, book] in
+            let results = await Task.detached {
+                book.search(query: trimmed, limit: 100)
+            }.value
+            self?.delegate?.bridgeDidReceiveSearchResults(results)
+        }
     }
 
     func highlightRange(cfiStart: String, cfiEnd: String, color: HighlightColor, id: String) {
-        guard let parsedStart = parseAnchor(cfiStart), let parsedEnd = parseAnchor(cfiEnd),
+        guard let parsedStart = parseAnchor(cfiStart, defaultKind: .offset),
+              let parsedEnd = parseAnchor(cfiEnd, defaultKind: .offset),
               parsedStart.href == parsedEnd.href else { return }
         let href = EPUBBook.normalizeHref(parsedStart.href)
-        let stored = StoredHighlight(id: id, startOffset: parsedStart.offset, endOffset: parsedEnd.offset, color: color.rawValue)
+        let stored = StoredHighlight(id: id, startOffset: parsedStart.value, endOffset: parsedEnd.value, color: color.rawValue)
         var list = highlightsByChapter[href] ?? []
         list.removeAll { $0.id == id }
         list.append(stored)
@@ -190,11 +230,11 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
         for a in anchors where a.type == "note" {
             let parts = a.cfi.components(separatedBy: "||")
             guard parts.count == 2,
-                  let start = parseAnchor(parts[0]),
-                  let end = parseAnchor(parts[1]),
+                  let start = parseAnchor(parts[0], defaultKind: .offset),
+                  let end = parseAnchor(parts[1], defaultKind: .offset),
                   start.href == end.href else { continue }
             let href = EPUBBook.normalizeHref(start.href)
-            let note = StoredNote(id: a.id, startOffset: start.offset, endOffset: end.offset)
+            let note = StoredNote(id: a.id, startOffset: start.value, endOffset: end.value)
             newNotes[href, default: []].append(note)
         }
         notesByChapter = newNotes
@@ -276,19 +316,41 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
 
     // MARK: - Anchor parsing
 
+    enum AnchorKind {
+        case page
+        case offset
+    }
+
     struct ParsedAnchor {
         let href: String
-        let offset: Int
+        let value: Int
+        let kind: AnchorKind
     }
 
-    static func makeAnchor(href: String, offset: Int) -> String {
-        "\(href)|\(offset)"
+    nonisolated static func makePageAnchor(href: String, page: Int) -> String {
+        "\(href)|p:\(page)"
     }
 
-    private func parseAnchor(_ s: String) -> ParsedAnchor? {
+    nonisolated static func makeOffsetAnchor(href: String, offset: Int) -> String {
+        "\(href)|o:\(offset)"
+    }
+
+    nonisolated static func makeAnchor(href: String, offset: Int) -> String {
+        makeOffsetAnchor(href: href, offset: offset)
+    }
+
+    private func parseAnchor(_ s: String, defaultKind: AnchorKind) -> ParsedAnchor? {
         let parts = s.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
-        guard parts.count == 2, let offset = Int(parts[1]) else { return nil }
-        return ParsedAnchor(href: String(parts[0]), offset: offset)
+        guard parts.count == 2 else { return nil }
+        let rawValue = String(parts[1])
+        if rawValue.hasPrefix("p:"), let page = Int(rawValue.dropFirst(2)) {
+            return ParsedAnchor(href: String(parts[0]), value: page, kind: .page)
+        }
+        if rawValue.hasPrefix("o:"), let offset = Int(rawValue.dropFirst(2)) {
+            return ParsedAnchor(href: String(parts[0]), value: offset, kind: .offset)
+        }
+        guard let value = Int(rawValue) else { return nil }
+        return ParsedAnchor(href: String(parts[0]), value: value, kind: defaultKind)
     }
 
     // MARK: - Incoming messages
@@ -310,8 +372,8 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
                   let endOffset = dict["endOffset"] as? Int,
                   let text = dict["text"] as? String,
                   let href = currentChapterHref() else { return }
-            let cfiStart = NativeEPUBBridge.makeAnchor(href: href, offset: startOffset)
-            let cfiEnd = NativeEPUBBridge.makeAnchor(href: href, offset: endOffset)
+            let cfiStart = NativeEPUBBridge.makeOffsetAnchor(href: href, offset: startOffset)
+            let cfiEnd = NativeEPUBBridge.makeOffsetAnchor(href: href, offset: endOffset)
             delegate?.bridgeDidSelectText(cfiStart: cfiStart, cfiEnd: cfiEnd, text: text)
             if let rectDict = dict["rect"] as? [String: Any],
                let x = rectDict["x"] as? Double, let y = rectDict["y"] as? Double,
@@ -373,6 +435,10 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
             evaluate("window.__reader && window.__reader.goToAnchor('\(esc)');")
             pendingAnchorId = nil
         }
+        if let offset = pendingOffset {
+            goToOffset(offset)
+            pendingOffset = nil
+        }
     }
 
     // MARK: - Link / footnote navigation
@@ -429,7 +495,7 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
         guard let book, currentChapterIndex < book.chapters.count else { return }
         let chapter = book.chapters[currentChapterIndex]
         let href = EPUBBook.normalizeHref(chapter.href)
-        let cfi = NativeEPUBBridge.makeAnchor(href: href, offset: pageInChapter)
+        let cfi = NativeEPUBBridge.makePageAnchor(href: href, page: pageInChapter)
 
         let current: Int
         let total: Int
@@ -450,6 +516,10 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
             totalPages: total,
             sectionHref: chapter.href
         )
+    }
+
+    private func goToOffset(_ offset: Int) {
+        evaluate("window.__reader && window.__reader.goToOffset(\(max(0, offset)));")
     }
 
     // MARK: - Preflight (measure page counts for all chapters)

@@ -39,7 +39,7 @@ struct TextNotesStoreTests {
         let stored = try await ann.fetchTextNotes(bookId: book.id)
         #expect(stored.count == 1)
         #expect(stored.first?.body == "My note")
-        #expect(stored.first?.cfiAnchor == "cfi-s")
+        #expect(stored.first?.cfiAnchor == "cfi-s||cfi-e")
         #expect(store.notes.count == 1)
         #expect(store.isEditorPresented == false)
         #expect(bridge.setAnnotationsCalls.last?.count == 1)

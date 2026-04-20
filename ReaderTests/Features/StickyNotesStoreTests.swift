@@ -119,11 +119,14 @@ struct StickyNotesStoreTests {
         try await lib.insert(book)
         await store.stickyNotesStore.loadForBook(bookId: book.id)
         store.currentSpineIndex = 3
+        bridge.pageInCurrentChapter = 6
+        bridge.simulatePageChanged(cfi: "chapter.xhtml|p:6", spineIndex: 3, currentPage: 42, totalPages: 100)
 
         store.addStickyNoteForCurrentPage()
         try await Task.sleep(nanoseconds: 50_000_000)
 
         #expect(store.stickyNotesStore.notes.count == 1)
         #expect(store.stickyNotesStore.notes.first?.spineIndex == 3)
+        #expect(store.stickyNotesStore.notes.first?.pageInChapter == 6)
     }
 }

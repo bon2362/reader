@@ -94,7 +94,7 @@ struct ReaderView: View {
                     StickyNotesOverlayView(
                         notes: store.stickyNotesStore.notesForPage(
                             spineIndex: store.currentSpineIndex,
-                            pageInChapter: max(0, store.currentPage - 1)
+                            pageInChapter: store.currentPageInChapter
                         ),
                         expandedId: store.stickyNotesStore.expandedId,
                         onToggle: { id in store.stickyNotesStore.toggleExpand(id: id) },

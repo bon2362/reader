@@ -6,7 +6,8 @@ enum EPUBTestFactory {
     static func makeMinimalEPUB(
         title: String = "Test Book",
         author: String? = "Test Author",
-        includeCover: Bool = false
+        includeCover: Bool = false,
+        chapterBodyHTML: String = "<p>hi</p>"
     ) throws -> URL {
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-\(UUID().uuidString).epub")
@@ -56,7 +57,7 @@ enum EPUBTestFactory {
         </package>
         """
         try addText(to: archive, path: "OEBPS/content.opf", text: opf)
-        try addText(to: archive, path: "OEBPS/chap1.xhtml", text: "<html><body><p>hi</p></body></html>")
+        try addText(to: archive, path: "OEBPS/chap1.xhtml", text: "<html><body>\(chapterBodyHTML)</body></html>")
 
         if includeCover {
             let png = tinyPNG()

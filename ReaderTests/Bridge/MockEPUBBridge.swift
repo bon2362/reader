@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 final class MockEPUBBridge: EPUBBridgeProtocol {
     weak var delegate: EPUBBridgeDelegate?
+    var pageInCurrentChapter: Int = 0
 
     var pingCallCount = 0
     var loadBookCalls: [URL] = []
@@ -82,4 +83,5 @@ final class DelegateRecorder: EPUBBridgeDelegate {
     func bridgeDidReceiveAnnotationPositions(_ positions: [AnnotationPosition]) {}
     func bridgeDidLoadTOC(_ entries: [TOCEntry]) {}
     func bridgeDidTapHighlight(id: String) {}
+    func bridgeDidFailToLoadBook(message: String) {}
 }

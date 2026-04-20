@@ -11,6 +11,7 @@ final class ReaderStore {
     var currentPage: Int = 0
     var totalPages: Int = 0
     var currentSpineIndex: Int = 0
+    var currentPageInChapter: Int = 0
     var totalChapters: Int = 0
     var isPageCountReady: Bool = false
     var currentSectionHref: String?
@@ -78,6 +79,7 @@ final class ReaderStore {
         currentCFI = book.lastCFI
         currentPage = book.currentPage ?? 0
         totalPages = book.totalPages ?? 0
+        currentPageInChapter = 0
         highlightsStore.reset()
         textNotesStore.reset()
         stickyNotesStore.reset()
@@ -97,7 +99,7 @@ final class ReaderStore {
 
     func addStickyNoteForCurrentPage() {
         let spine = currentSpineIndex
-        let page = max(0, currentPage - 1)
+        let page = bridge?.pageInCurrentChapter ?? currentPageInChapter
         Task { [stickyNotesStore] in await stickyNotesStore.createAt(spineIndex: spine, pageInChapter: page) }
     }
 
@@ -135,6 +137,7 @@ extension ReaderStore: EPUBBridgeDelegate {
         self.currentSpineIndex = spineIndex
         self.currentPage = currentPage
         self.totalPages = totalPages
+        self.currentPageInChapter = bridge?.pageInCurrentChapter ?? 0
         self.currentSectionHref = sectionHref
         tocStore.updateCurrentSection(href: sectionHref)
         textNotesStore.syncAnnotationsToBridge()
@@ -155,6 +158,10 @@ extension ReaderStore: EPUBBridgeDelegate {
 
     func bridgeDidUpdateLinkBackAvailability(canGoBack: Bool) {
         canGoBackFromLink = canGoBack
+    }
+
+    func bridgeDidFailToLoadBook(message: String) {
+        errorMessage = message
     }
     func bridgeDidTapPage(x: Double, y: Double) {}
     func bridgeDidReceiveSearchResults(_ results: [SearchResult]) {

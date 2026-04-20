@@ -30,12 +30,13 @@ struct ReaderStoreTests {
 
     @Test func openBookRestoresLastCFI() async throws {
         let (store, bridge, lib, _) = try makeSetup()
-        let book = Book(title: "T", filePath: "/x", lastCFI: "epubcfi(/6/4)")
+        let book = Book(title: "T", filePath: "/x", lastCFI: "chap1.xhtml|p:4")
         try await lib.insert(book)
 
         store.openBook(book, resolvedURL: URL(fileURLWithPath: "/x"))
 
-        #expect(bridge.goToCFICalls == ["epubcfi(/6/4)"])
+        #expect(bridge.setPendingInitialCFICalls == ["chap1.xhtml|p:4"])
+        #expect(bridge.goToCFICalls.isEmpty)
     }
 
     @Test func openBookSkipsGoToCFIWhenNoSavedPosition() async throws {
@@ -67,6 +68,7 @@ struct ReaderStoreTests {
         #expect(store.currentSpineIndex == 3)
         #expect(store.currentPage == 47)
         #expect(store.totalPages == 312)
+        #expect(store.currentPageInChapter == 0)
     }
 
     @Test func pageChangedPersistsProgress() async throws {
@@ -121,5 +123,22 @@ struct ReaderStoreTests {
         bridge.simulatePageChanged(cfi: "x", spineIndex: 0, currentPage: 1, totalPages: 10)
 
         #expect(store.currentCFI == "x")
+    }
+
+    @Test func pageChangedTracksPageInChapterFromBridge() async throws {
+        let (store, bridge, _, _) = try makeSetup()
+        bridge.pageInCurrentChapter = 4
+
+        bridge.simulatePageChanged(cfi: "chap.xhtml|p:4", spineIndex: 2, currentPage: 18, totalPages: 99)
+
+        #expect(store.currentPageInChapter == 4)
+    }
+
+    @Test func loadFailureShowsErrorMessage() async throws {
+        let (store, bridge, _, _) = try makeSetup()
+
+        bridge.delegate?.bridgeDidFailToLoadBook(message: "broken epub")
+
+        #expect(store.errorMessage == "broken epub")
     }
 }

@@ -4,6 +4,7 @@ import CoreGraphics
 @MainActor
 protocol EPUBBridgeProtocol: AnyObject {
     var delegate: EPUBBridgeDelegate? { get set }
+    var pageInCurrentChapter: Int { get }
 
     func ping()
     func loadBook(url: URL)
@@ -39,6 +40,7 @@ protocol EPUBBridgeDelegate: AnyObject {
     func bridgeDidUpdateSelectionRect(_ rect: CGRect?)
     func bridgeDidClearSelection()
     func bridgeDidUpdateLinkBackAvailability(canGoBack: Bool)
+    func bridgeDidFailToLoadBook(message: String)
 }
 
 extension EPUBBridgeDelegate {
@@ -48,4 +50,5 @@ extension EPUBBridgeDelegate {
     func bridgeDidUpdateSelectionRect(_ rect: CGRect?) {}
     func bridgeDidClearSelection() {}
     func bridgeDidUpdateLinkBackAvailability(canGoBack: Bool) {}
+    func bridgeDidFailToLoadBook(message: String) {}
 }

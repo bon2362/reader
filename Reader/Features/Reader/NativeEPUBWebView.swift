@@ -157,6 +157,15 @@ struct NativeEPUBWebView: NSViewRepresentable {
                 var target = Math.max(0, Math.floor(r.left / pageSize()));
                 this.goToPage(target);
             },
+            goToOffset: function(offset) {
+                if (!__wrap) return;
+                var rng = rangeForOffsets(offset, Math.max(offset + 1, offset));
+                if (!rng) return;
+                __wrap.style.transform = 'translateX(0px)';
+                var r = rng.getBoundingClientRect();
+                var target = Math.max(0, Math.floor(r.left / pageSize()));
+                this.goToPage(target);
+            },
             applyHighlights: function(list) {
                 clearAllHighlights();
                 for (var i = 0; i < list.length; i++) applyOne(list[i], 'hl');
@@ -230,6 +239,33 @@ struct NativeEPUBWebView: NSViewRepresentable {
             if (start === null || end === null) return null;
             if (start > end) { var t = start; start = end; end = t; }
             return {start: start, end: end};
+        }
+
+        function rangeForOffsets(start, end) {
+            var nodes = collectTextNodes();
+            var pos = 0;
+            var range = document.createRange();
+            var didStart = false;
+            for (var i = 0; i < nodes.length; i++) {
+                var n = nodes[i];
+                var len = n.nodeValue.length;
+                var ns = pos, ne = pos + len;
+                if (!didStart && start >= ns && start <= ne) {
+                    range.setStart(n, Math.min(len, Math.max(0, start - ns)));
+                    didStart = true;
+                }
+                if (didStart && end >= ns && end <= ne) {
+                    range.setEnd(n, Math.min(len, Math.max(0, end - ns)));
+                    return range;
+                }
+                pos = ne;
+            }
+            if (didStart && nodes.length > 0) {
+                var last = nodes[nodes.length - 1];
+                range.setEnd(last, last.nodeValue.length);
+                return range;
+            }
+            return null;
         }
 
         function resolveContainerOffset(container, offset, nodes) {
