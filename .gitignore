@@ -1,0 +1,34 @@
+# macOS
+.DS_Store
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Build products
+DerivedData/
+build/
+.build/
+
+# Swift Package Manager
+.swiftpm/
+Package.resolved
+
+# Coverage and profiling
+*.profraw
+*.profdata
+*.xccovreport
+*.xccovarchive
+
+# Test and result bundles
+*.xcresult
+
+# Local agent/tool installs
+.agents/
+.claude/
+
+# Temporary files
+*.tmp
+*.swp
+*~

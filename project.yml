@@ -1,0 +1,58 @@
+name: Reader
+options:
+  bundleIdPrefix: com.koshkin
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift.git
+    exactVersion: "7.10.0"
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation.git
+    from: "0.9.19"
+
+targets:
+  Reader:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Reader
+        excludes:
+          - "**/*.md"
+    resources:
+      - path: Reader/Resources/Assets.xcassets
+      - path: Reader/Resources/JS
+        buildPhase: resources
+    dependencies:
+      - package: GRDB
+      - package: ZIPFoundation
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.koshkin.reader
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "slow reader"
+        INFOPLIST_KEY_CFBundleName: "slow reader"
+
+  ReaderTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: ReaderTests
+    dependencies:
+      - target: Reader
+      - package: GRDB
+      - package: ZIPFoundation
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        GENERATE_INFOPLIST_FILE: YES
