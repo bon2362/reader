@@ -22,21 +22,21 @@ enum PDFTextNoteRenderer {
               let anchor = PDFAnchor.parse(note.cfiAnchor),
               let range = anchor.range,
               let page = document.page(at: anchor.pageIndex),
-              let selection = page.selection(for: range),
-              let markup = PDFMarkupGeometry.markup(for: selection, on: page) else {
+              let selection = page.selection(for: range) else {
             return
         }
 
-        let annotation = PDFAnnotation(bounds: markup.bounds, forType: .underline, withProperties: nil)
-        annotation.color = normalColor
-        let border = PDFBorder()
-        border.lineWidth = 1.5
-        border.style = .dashed
-        border.dashPattern = normalDashPattern
-        annotation.border = border
-        annotation.contents = markerPrefix + note.id
-        _ = annotation.setValue(markup.quadPoints, forAnnotationKey: PDFAnnotationKey.quadPoints)
-        page.addAnnotation(annotation)
+        for bounds in PDFMarkupGeometry.selectionLineBounds(for: selection, on: page) {
+            let annotation = PDFAnnotation(bounds: bounds, forType: .underline, withProperties: nil)
+            annotation.color = normalColor
+            let border = PDFBorder()
+            border.lineWidth = 1.5
+            border.style = .dashed
+            border.dashPattern = normalDashPattern
+            annotation.border = border
+            annotation.contents = markerPrefix + note.id
+            page.addAnnotation(annotation)
+        }
     }
 
     static func remove(noteID: String, in pdfView: PDFView) {
@@ -63,6 +63,9 @@ enum PDFTextNoteRenderer {
 
     static func noteAnnotation(for annotation: PDFAnnotation, on page: PDFPage) -> PDFAnnotation? {
         guard let noteID = noteID(for: annotation) else { return nil }
+        if annotation.contents == markerPrefix + noteID {
+            return annotation
+        }
         return page.annotations.first(where: { $0.contents == markerPrefix + noteID })
     }
 
@@ -99,9 +102,6 @@ enum PDFTextNoteRenderer {
         let hover = PDFAnnotation(bounds: annotation.bounds, forType: .highlight, withProperties: nil)
         hover.color = NSColor.systemYellow.withAlphaComponent(0.18)
         hover.contents = hoverMarkerPrefix + noteID
-        if let quadPoints = annotation.value(forAnnotationKey: PDFAnnotationKey.quadPoints) {
-            _ = hover.setValue(quadPoints, forAnnotationKey: PDFAnnotationKey.quadPoints)
-        }
         page.addAnnotation(hover)
     }
 
