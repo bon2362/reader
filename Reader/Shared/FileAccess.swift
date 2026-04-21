@@ -30,11 +30,21 @@ enum FileAccess {
         }
     }
 
-    // MARK: - Copy EPUB to sandbox
+    // MARK: - Copy books to sandbox
 
     @discardableResult
     static func copyEPUBToSandbox(from source: URL, bookId: String) throws -> URL {
-        let destination = try booksDir.appendingPathComponent("\(bookId).epub")
+        try copyBookToSandbox(from: source, bookId: bookId, extension: "epub")
+    }
+
+    @discardableResult
+    static func copyPDFToSandbox(from source: URL, bookId: String) throws -> URL {
+        try copyBookToSandbox(from: source, bookId: bookId, extension: "pdf")
+    }
+
+    @discardableResult
+    private static func copyBookToSandbox(from source: URL, bookId: String, extension fileExtension: String) throws -> URL {
+        let destination = try booksDir.appendingPathComponent("\(bookId).\(fileExtension)")
         let fm = FileManager.default
         if fm.fileExists(atPath: destination.path) {
             try fm.removeItem(at: destination)
@@ -46,9 +56,11 @@ enum FileAccess {
     static func deleteBookFiles(bookId: String) throws {
         let fm = FileManager.default
 
-        let epub = try booksDir.appendingPathComponent("\(bookId).epub")
-        if fm.fileExists(atPath: epub.path) {
-            try fm.removeItem(at: epub)
+        for fileExtension in ["epub", "pdf"] {
+            let bookFile = try booksDir.appendingPathComponent("\(bookId).\(fileExtension)")
+            if fm.fileExists(atPath: bookFile.path) {
+                try fm.removeItem(at: bookFile)
+            }
         }
 
         let cover = try coversDir.appendingPathComponent("\(bookId).png")

@@ -105,6 +105,9 @@ final class AnnotationPanelStore {
     }
 
     private func globalPage(spineIndex: Int, pageInChapter: Int) -> Int? {
+        if chapterPageCounts.isEmpty, pageInChapter == 0 {
+            return spineIndex + 1
+        }
         guard spineIndex >= 0,
               spineIndex < chapterPageCounts.count,
               chapterPageCounts.prefix(spineIndex).allSatisfy({ $0 > 0 }) else {

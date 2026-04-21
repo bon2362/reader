@@ -9,8 +9,11 @@ final class SearchStore {
     var isSearching: Bool = false
     var isVisible: Bool = false
     var recent: [String] = []
+    var emptyMessage: String = "Ничего не найдено"
 
     private weak var bridge: EPUBBridgeProtocol?
+    private var searchHandler: (@MainActor (String) -> Void)?
+    private var selectHandler: (@MainActor (SearchResult) -> Void)?
     private var debounceTask: Task<Void, Never>?
 
     static let debounceNanos: UInt64 = 300_000_000
@@ -23,6 +26,17 @@ final class SearchStore {
 
     func bindBridge(_ bridge: EPUBBridgeProtocol) {
         self.bridge = bridge
+        searchHandler = nil
+        selectHandler = nil
+    }
+
+    func bindHandlers(
+        search: @escaping @MainActor (String) -> Void,
+        select: @escaping @MainActor (SearchResult) -> Void
+    ) {
+        bridge = nil
+        searchHandler = search
+        selectHandler = select
     }
 
     func show() {
@@ -47,6 +61,7 @@ final class SearchStore {
         guard !trimmed.isEmpty else {
             results = []
             isSearching = false
+            emptyMessage = "Ничего не найдено"
             return
         }
 
@@ -59,17 +74,32 @@ final class SearchStore {
     }
 
     private func dispatchSearch(_ query: String) {
-        bridge?.search(query: query)
+        if let searchHandler {
+            searchHandler(query)
+        } else {
+            bridge?.search(query: query)
+        }
     }
 
     func handleResults(_ results: [SearchResult]) {
         self.results = results
         isSearching = false
+        emptyMessage = "Ничего не найдено"
     }
 
     func selectResult(_ result: SearchResult) {
-        bridge?.goToCFI(result.cfi)
+        if let selectHandler {
+            selectHandler(result)
+        } else {
+            bridge?.goToCFI(result.cfi)
+        }
         commitRecent(query)
+    }
+
+    func showUnavailableMessage(_ message: String) {
+        results = []
+        isSearching = false
+        emptyMessage = message
     }
 
     // MARK: - Recent

@@ -20,6 +20,8 @@ final class HighlightsStore {
     private let repository: AnnotationRepositoryProtocol
     private weak var bridge: EPUBBridgeProtocol?
     private var bookId: String?
+    private var externalRender: (@MainActor (Highlight) -> Void)?
+    private var externalRemove: (@MainActor (String) -> Void)?
 
     init(repository: AnnotationRepositoryProtocol) {
         self.repository = repository
@@ -27,6 +29,17 @@ final class HighlightsStore {
 
     func bindBridge(_ bridge: EPUBBridgeProtocol) {
         self.bridge = bridge
+        externalRender = nil
+        externalRemove = nil
+    }
+
+    func bindExternalRenderer(
+        render: @escaping @MainActor (Highlight) -> Void,
+        remove: @escaping @MainActor (String) -> Void
+    ) {
+        bridge = nil
+        externalRender = render
+        externalRemove = remove
     }
 
     // MARK: - Lifecycle
@@ -49,6 +62,8 @@ final class HighlightsStore {
         pendingSelection = nil
         activeHighlightId = nil
         bookId = nil
+        externalRender = nil
+        externalRemove = nil
     }
 
     // MARK: - Selection flow
@@ -110,6 +125,7 @@ final class HighlightsStore {
             try await repository.updateHighlight(updated)
             highlights[idx] = updated
             bridge?.removeHighlight(id: id)
+            externalRemove?(id)
             renderOnBridge(updated)
         } catch {
             errorMessage = "Не удалось обновить хайлайт"
@@ -122,6 +138,7 @@ final class HighlightsStore {
             try await repository.deleteHighlight(id: id)
             highlights.removeAll { $0.id == id }
             bridge?.removeHighlight(id: id)
+            externalRemove?(id)
             activeHighlightId = nil
         } catch {
             errorMessage = "Не удалось удалить хайлайт"
@@ -137,5 +154,6 @@ final class HighlightsStore {
 
     private func renderOnBridge(_ h: Highlight) {
         bridge?.highlightRange(cfiStart: h.cfiStart, cfiEnd: h.cfiEnd, color: h.color, id: h.id)
+        externalRender?(h)
     }
 }

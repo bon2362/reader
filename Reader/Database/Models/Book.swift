@@ -14,6 +14,7 @@ struct Book: Identifiable, Codable, Hashable {
     var totalPages: Int?
     var currentPage: Int?
     var chapterPageCountsJSON: String?
+    var format: BookFormat
 
     init(
         id: String = UUID().uuidString,
@@ -27,7 +28,8 @@ struct Book: Identifiable, Codable, Hashable {
         lastCFI: String? = nil,
         totalPages: Int? = nil,
         currentPage: Int? = nil,
-        chapterPageCountsJSON: String? = nil
+        chapterPageCountsJSON: String? = nil,
+        format: BookFormat = .epub
     ) {
         self.id = id
         self.title = title
@@ -41,6 +43,7 @@ struct Book: Identifiable, Codable, Hashable {
         self.totalPages = totalPages
         self.currentPage = currentPage
         self.chapterPageCountsJSON = chapterPageCountsJSON
+        self.format = format
     }
 
     var progress: Double {
@@ -78,6 +81,7 @@ extension Book: FetchableRecord, PersistableRecord {
         static let totalPages   = Column(CodingKeys.totalPages)
         static let currentPage  = Column(CodingKeys.currentPage)
         static let chapterPageCountsJSON = Column(CodingKeys.chapterPageCountsJSON)
+        static let format       = Column(CodingKeys.format)
     }
 
     enum CodingKeys: String, CodingKey {
@@ -93,5 +97,6 @@ extension Book: FetchableRecord, PersistableRecord {
         case totalPages   = "total_pages"
         case currentPage  = "current_page"
         case chapterPageCountsJSON = "chapter_page_counts"
+        case format
     }
 }

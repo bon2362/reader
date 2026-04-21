@@ -29,6 +29,19 @@ final class TOCStore {
         }
     }
 
+    func updateCurrentPDFPage(_ pageIndex: Int) {
+        let matches = entries.compactMap { entry -> (TOCEntry, Int)? in
+            guard let anchor = PDFAnchor.parse(entry.href) else { return nil }
+            return (entry, anchor.pageIndex)
+        }
+        guard let best = matches
+            .filter({ $0.1 <= pageIndex })
+            .max(by: { $0.1 < $1.1 }) else {
+            return
+        }
+        currentEntryId = best.0.id
+    }
+
     func toggleVisibility() { isVisible.toggle() }
 
     private func normalize(_ href: String) -> String {

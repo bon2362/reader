@@ -18,6 +18,7 @@ final class ReaderStore {
     var showToolbar: Bool = true
     var errorMessage: String?
     var canGoBackFromLink: Bool = false
+    var pdfStore: PDFReaderStore?
 
     let tocStore: TOCStore
     let searchStore: SearchStore
@@ -75,6 +76,12 @@ final class ReaderStore {
     // MARK: - Public API
 
     func openBook(_ book: Book, resolvedURL: URL) {
+        guard book.format == .epub else {
+            openPDFBook(book, resolvedURL: resolvedURL)
+            return
+        }
+
+        pdfStore = nil
         currentBook = book
         currentCFI = book.lastCFI
         currentPage = book.currentPage ?? 0
@@ -98,13 +105,67 @@ final class ReaderStore {
         Task { [stickyNotesStore] in await stickyNotesStore.loadForBook(bookId: id) }
     }
 
+    func openPDFBook(_ book: Book, resolvedURL: URL) {
+        if currentBook?.id == book.id, pdfStore != nil {
+            return
+        }
+
+        do {
+            let store = try PDFReaderStore(
+                book: book,
+                resolvedURL: resolvedURL,
+                libraryRepository: libraryRepository,
+                tocStore: tocStore,
+                searchStore: searchStore,
+                highlightsStore: highlightsStore,
+                textNotesStore: textNotesStore,
+                stickyNotesStore: stickyNotesStore,
+                annotationPanelStore: annotationPanelStore,
+                onStateChange: { [weak self] pdfStore in
+                    guard let self else { return }
+                    self.currentCFI = PDFAnchor.encodePage(pdfStore.currentPageIndex)
+                    self.currentPage = pdfStore.currentPageNumber
+                    self.totalPages = pdfStore.totalPages
+                    self.currentSpineIndex = pdfStore.currentPageIndex
+                    self.currentPageInChapter = 0
+                    self.totalChapters = self.tocStore.entries.count
+                    self.isPageCountReady = true
+                    self.canGoBackFromLink = pdfStore.canGoBackFromLink
+                }
+            )
+            pdfStore = store
+            currentBook = book
+            currentCFI = book.lastCFI
+            currentPage = book.currentPage ?? 1
+            totalPages = book.totalPages ?? 0
+            currentSpineIndex = max(0, (book.currentPage ?? 1) - 1)
+            currentPageInChapter = 0
+            totalChapters = max(0, tocStore.entries.count)
+            isPageCountReady = true
+            canGoBackFromLink = store.canGoBackFromLink
+            errorMessage = nil
+            store.start()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func addStickyNoteForCurrentPage() {
+        if let pdfStore {
+            pdfStore.addStickyNoteForCurrentPage()
+            return
+        }
         let spine = currentSpineIndex
         let page = bridge?.pageInCurrentChapter ?? currentPageInChapter
         Task { [stickyNotesStore] in await stickyNotesStore.createAt(spineIndex: spine, pageInChapter: page) }
     }
 
     func navigateToAnnotation(_ item: AnnotationListItem) {
+        if let pdfStore {
+            pdfStore.navigateToAnnotation(item)
+            canGoBackFromLink = pdfStore.canGoBackFromLink
+            return
+        }
         if let cfi = item.cfi, !cfi.isEmpty {
             bridge?.goToCFI(cfi)
         } else if let spine = item.spineIndex, let page = item.pageInChapter {
@@ -114,9 +175,30 @@ final class ReaderStore {
         }
     }
 
-    func nextPage() { bridge?.nextPage() }
-    func prevPage() { bridge?.prevPage() }
-    func goBackFromLink() { bridge?.goBackFromLink() }
+    func nextPage() {
+        if let pdfStore {
+            pdfStore.nextPage()
+            return
+        }
+        bridge?.nextPage()
+    }
+
+    func prevPage() {
+        if let pdfStore {
+            pdfStore.prevPage()
+            return
+        }
+        bridge?.prevPage()
+    }
+
+    func goBackFromLink() {
+        if let pdfStore {
+            pdfStore.goBack()
+            canGoBackFromLink = pdfStore.canGoBackFromLink
+            return
+        }
+        bridge?.goBackFromLink()
+    }
 
     func resetAutoHideToolbar() {
         showToolbar = true
@@ -201,6 +283,11 @@ extension ReaderStore: EPUBBridgeDelegate {
     }
 
     func navigateToTOCEntry(_ entry: TOCEntry) {
+        if let pdfStore {
+            pdfStore.navigateToTOCEntry(entry)
+            canGoBackFromLink = pdfStore.canGoBackFromLink
+            return
+        }
         bridge?.goToCFI(entry.href)
         tocStore.currentEntryId = entry.id
     }

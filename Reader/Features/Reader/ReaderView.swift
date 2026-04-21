@@ -32,7 +32,7 @@ struct ReaderView: View {
                     Divider()
                     SearchView(
                         store: store.searchStore,
-                        onSelect: { _ in },
+                        onSelect: { _ in store.searchStore.hide() },
                         onClose: { store.searchStore.hide() }
                     )
                     .frame(width: 300)
@@ -72,10 +72,125 @@ struct ReaderView: View {
     }
 
     private var readerPane: some View {
+        ZStack {
+            if book.format == .pdf {
+                PDFReaderView(
+                    readerStore: store,
+                    book: book,
+                    resolvedURL: resolvedURL
+                )
+            } else {
+                epubReaderPane
+            }
+
+            VStack {
+                HStack(alignment: .top) {
+                    leftControls
+                    Spacer()
+                    rightControls
+                }
+                .padding(.horizontal, 10)
+                .padding(.top, 8)
+                Spacer()
+            }
+            .allowsHitTesting(true)
+
+            GeometryReader { geo in
+                ZStack {
+                    if let selection = store.highlightsStore.pendingSelection {
+                        let anchor = pickerPosition(for: selection.rect, in: geo.size, format: book.format)
+                        HighlightColorPicker(
+                            onPick: { color in
+                                Task { await store.highlightsStore.applyColor(color) }
+                            },
+                            onNote: {
+                                store.textNotesStore.beginNote(for: selection)
+                                store.highlightsStore.cancelPendingSelection()
+                            }
+                        )
+                        .position(anchor)
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    } else if let active = store.highlightsStore.activeHighlight {
+                        VStack {
+                            Spacer()
+                            HighlightColorPicker(
+                                onPick: { color in
+                                    Task { await store.highlightsStore.changeActiveColor(color) }
+                                },
+                                onDismiss: { store.highlightsStore.dismissActiveHighlight() },
+                                activeColor: active.color,
+                                showDelete: true,
+                                onDelete: {
+                                    Task { await store.highlightsStore.deleteActive() }
+                                }
+                            )
+                            .padding(.bottom, 56)
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                        }
+                    }
+                }
+            }
+            .allowsHitTesting(store.highlightsStore.pendingSelection != nil || store.highlightsStore.activeHighlight != nil)
+        }
+        .animation(.easeInOut(duration: 0.15), value: store.highlightsStore.pendingSelection)
+        .animation(.easeInOut(duration: 0.15), value: store.highlightsStore.activeHighlightId)
+        .focusable()
+        .focused($isFocused)
+        .focusEffectDisabled()
+        .onAppear { isFocused = true }
+        .onKeyPress(.leftArrow) {
+            guard canHandlePageKeyPress else { return .ignored }
+            store.prevPage()
+            return .handled
+        }
+        .onKeyPress(.rightArrow) {
+            guard canHandlePageKeyPress else { return .ignored }
+            store.nextPage()
+            return .handled
+        }
+        .onKeyPress(.space) {
+            guard canHandlePageKeyPress else { return .ignored }
+            store.nextPage()
+            return .handled
+        }
+        .sheet(isPresented: Binding(
+            get: { store.textNotesStore.isEditorPresented },
+            set: { if !$0 { store.textNotesStore.cancelEditor() } }
+        )) {
+            NoteEditorView(
+                selectedText: store.textNotesStore.draftSelection?.text,
+                initialBody: store.textNotesStore.draftEditingNote?.body ?? "",
+                onSave: { body in
+                    if store.textNotesStore.draftEditingNote != nil {
+                        Task {
+                            await store.textNotesStore.updateNote(body: body)
+                            store.pdfStore?.refreshVisibleAnnotations()
+                        }
+                    } else {
+                        Task {
+                            await store.textNotesStore.addNote(body: body)
+                            store.pdfStore?.refreshVisibleAnnotations()
+                        }
+                    }
+                },
+                onCancel: { store.textNotesStore.cancelEditor() }
+            )
+        }
+        .alert(
+            "Ошибка",
+            isPresented: .init(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })
+        ) {
+            Button("OK", role: .cancel) { store.errorMessage = nil }
+        } message: {
+            Text(store.errorMessage ?? "")
+        }
+    }
+
+    private var epubReaderPane: some View {
         VStack(spacing: 0) {
             ChapterHeaderBar(chapterTitle: store.tocStore.currentEntry?.label)
 
-            GeometryReader { geo in
+            GeometryReader { _ in
                 ZStack {
                     NativeEPUBWebView { bridge in
                         store.bindBridge(bridge)
@@ -121,52 +236,6 @@ struct ReaderView: View {
                         onDismiss: { store.textNotesStore.dismissTappedNote() }
                     )
 
-                    // Floating icon controls — top corners.
-                    VStack {
-                        HStack(alignment: .top) {
-                            leftControls
-                            Spacer()
-                            rightControls
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.top, 8)
-                        Spacer()
-                    }
-
-                    // Selection highlight picker — positioned near the selection rect.
-                    if let selection = store.highlightsStore.pendingSelection {
-                        let anchor = pickerPosition(for: selection.rect, in: geo.size)
-                        HighlightColorPicker(
-                            onPick: { color in
-                                Task { await store.highlightsStore.applyColor(color) }
-                            },
-                            onNote: {
-                                store.textNotesStore.beginNote(for: selection)
-                                store.highlightsStore.cancelPendingSelection()
-                            }
-                        )
-                        .position(anchor)
-                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                    } else if let active = store.highlightsStore.activeHighlight {
-                        VStack {
-                            Spacer()
-                            HighlightColorPicker(
-                                onPick: { color in
-                                    Task { await store.highlightsStore.changeActiveColor(color) }
-                                },
-                                onDismiss: { store.highlightsStore.dismissActiveHighlight() },
-                                activeColor: active.color,
-                                showDelete: true,
-                                onDelete: {
-                                    Task { await store.highlightsStore.deleteActive() }
-                                }
-                            )
-                            .padding(.bottom, 56)
-                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                        }
-                    }
-
-                    // Page indicator — permanent, bottom center.
                     VStack {
                         Spacer()
                         PageIndicator(
@@ -177,53 +246,7 @@ struct ReaderView: View {
                         .padding(.bottom, 14)
                     }
                 }
-                .animation(.easeInOut(duration: 0.15), value: store.highlightsStore.pendingSelection)
-                .animation(.easeInOut(duration: 0.15), value: store.highlightsStore.activeHighlightId)
             }
-        }
-        .focusable()
-        .focused($isFocused)
-        .focusEffectDisabled()
-        .onAppear { isFocused = true }
-        .onKeyPress(.leftArrow) {
-            guard canHandlePageKeyPress else { return .ignored }
-            store.prevPage()
-            return .handled
-        }
-        .onKeyPress(.rightArrow) {
-            guard canHandlePageKeyPress else { return .ignored }
-            store.nextPage()
-            return .handled
-        }
-        .onKeyPress(.space) {
-            guard canHandlePageKeyPress else { return .ignored }
-            store.nextPage()
-            return .handled
-        }
-        .sheet(isPresented: Binding(
-            get: { store.textNotesStore.isEditorPresented },
-            set: { if !$0 { store.textNotesStore.cancelEditor() } }
-        )) {
-            NoteEditorView(
-                selectedText: store.textNotesStore.draftSelection?.text,
-                initialBody: store.textNotesStore.draftEditingNote?.body ?? "",
-                onSave: { body in
-                    if store.textNotesStore.draftEditingNote != nil {
-                        Task { await store.textNotesStore.updateNote(body: body) }
-                    } else {
-                        Task { await store.textNotesStore.addNote(body: body) }
-                    }
-                },
-                onCancel: { store.textNotesStore.cancelEditor() }
-            )
-        }
-        .alert(
-            "Ошибка",
-            isPresented: .init(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })
-        ) {
-            Button("OK", role: .cancel) { store.errorMessage = nil }
-        } message: {
-            Text(store.errorMessage ?? "")
         }
     }
 
@@ -272,9 +295,12 @@ struct ReaderView: View {
     /// Compute picker center position in the reader ZStack coords, given the
     /// selection bounding rect reported by JS (in webview viewport coords).
     /// JS rects are in CSS pixels ≈ SwiftUI points on macOS.
-    private func pickerPosition(for rect: CGRect?, in size: CGSize) -> CGPoint {
+    private func pickerPosition(for rect: CGRect?, in size: CGSize, format: BookFormat) -> CGPoint {
         let pickerWidth: CGFloat = 220
         let pickerHalf = pickerWidth / 2
+        let pickerHeight: CGFloat = 42
+        let pickerHalfHeight = pickerHeight / 2
+        let gap: CGFloat = 12
         let margin: CGFloat = 8
 
         guard let rect else {
@@ -285,16 +311,20 @@ struct ReaderView: View {
         // Clamp horizontally so the pill doesn't spill off edges
         x = max(pickerHalf + margin, min(size.width - pickerHalf - margin, x))
 
-        // Prefer below the selection; fallback above if it would clip.
-        let below = rect.maxY + 24
-        let above = rect.minY - 24
+        // Both EPUB and PDF now use center-aware placement for the picker.
+        // The difference between formats is handled earlier, when rects are produced.
+        let below = rect.maxY + gap + pickerHalfHeight
+        let above = rect.minY - gap - pickerHalfHeight
         let y: CGFloat
-        if below + 30 < size.height - margin {
-            y = below
-        } else if above - 30 > margin {
-            y = above
-        } else {
-            y = min(size.height - 40, max(40, rect.midY))
+        switch format {
+        case .epub, .pdf:
+            if below + pickerHalfHeight < size.height - margin {
+                y = below
+            } else if above - pickerHalfHeight > margin {
+                y = above
+            } else {
+                y = min(size.height - pickerHalfHeight - margin, max(pickerHalfHeight + margin, rect.midY))
+            }
         }
         return CGPoint(x: x, y: y)
     }

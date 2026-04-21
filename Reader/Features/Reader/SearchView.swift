@@ -125,7 +125,7 @@ struct SearchView: View {
                     .foregroundStyle(.secondary)
             }
         } else if store.results.isEmpty {
-            Text("Ничего не найдено")
+            Text(store.emptyMessage)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         } else {
