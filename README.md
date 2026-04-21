@@ -63,6 +63,8 @@ Planning and product documents live under [_bmad-output/project-docs](/Users/eko
 
 - [PRD](/Users/ekoshkin/reader/_bmad-output/project-docs/prd-reader-app.md)
 - [Architecture](/Users/ekoshkin/reader/_bmad-output/project-docs/architecture-reader-app.md)
+- [iPhone MVP Architecture](/Users/ekoshkin/reader/_bmad-output/project-docs/architecture-iphone-mvp.md)
+- [iPhone MVP Epics](/Users/ekoshkin/reader/_bmad-output/project-docs/epics-reader-app-iphone-mvp.md)
 - [Epics](/Users/ekoshkin/reader/_bmad-output/project-docs/epics-reader-app-mvp.md)
 
 ## Status
