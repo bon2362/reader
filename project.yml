@@ -1,4 +1,8 @@
 name: Reader
+# Planned repository direction:
+# - keep macOS app, iPhone app, and sync layer in this same repository
+# - evolve toward a monorepo with separate app targets plus shared/sync layers
+# - do not split iPhone MVP or CloudKit sync into a separate repository at this stage
 options:
   bundleIdPrefix: com.koshkin
   deploymentTarget:

@@ -70,3 +70,5 @@ Planning and product documents live under [_bmad-output/project-docs](/Users/eko
 ## Status
 
 This project is currently focused on the core macOS reading experience: library management, EPUB/PDF reading, navigation, search, and annotations.
+
+The planned iPhone MVP is intended to live in the same repository as the macOS app, using a monorepo-style structure with separate app targets and shared/sync layers rather than a separate repository.

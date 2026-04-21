@@ -16,6 +16,7 @@
 - AC-2: Общие модели, repository-протоколы и sync layer переиспользуются между платформами
 - AC-3: macOS-специфичные части (`AppKit`, `NSViewRepresentable`, hover) не протекают в shared слой
 - AC-4: У iOS target есть базовая композиция приложения: launch -> library screen
+- AC-5: Решение реализовано в том же репозитории, без вынесения iPhone app или sync слоя в отдельный repo
 
 ## Tasks / Subtasks
 
@@ -23,8 +24,10 @@
 - [ ] Task 2: Вынести shared code в платформенно-нейтральные модули/группы
 - [ ] Task 3: Изолировать macOS-only реализации
 - [ ] Task 4: Собрать базовый iPhone app shell
+- [ ] Task 5: Зафиксировать структуру monorepo в `project.yml`/документации
 
 ## Dev Notes
 
 - Текущий проект содержит много `AppKit`-зависимостей в import flow и PDF UI
 - Shared boundary нужно выстроить до полноценной iPhone-реализации, иначе потом будет дорогой рефакторинг
+- Предпочтительная форма для MVP: один репозиторий, два app targets, shared/sync directories внутри того же Xcode проекта

@@ -20,6 +20,22 @@
 
 `EPUB` переносится на следующую фазу.
 
+### Новое приложение и sync делаем в том же репозитории
+
+Рекомендуемый путь: не отдельный репозиторий, а `monorepo` с двумя приложениями и общими слоями.
+
+Почему это решение выбрано:
+
+- текущая macOS-кодовая база уже содержит рабочие модели, repository-слой, PDF/EPUB reader paths и BMad-артефакты;
+- основная задача iPhone MVP — не “запустить второй независимый продукт”, а переиспользовать существующую доменную логику и аккуратно добавить sync;
+- ранний вынос iPhone и sync в отдельный репозиторий почти гарантированно приведёт к дублированию моделей, расхождению merge-логики и дорогой синхронизации архитектурных изменений между двумя кодовыми базами.
+
+Итоговое правило:
+
+- новый iPhone app target — в этом же репозитории;
+- sync layer — в этом же репозитории;
+- разделение делать по targets и модулям, а не по репозиториям.
+
 ### Почему PDF проще и честнее для первого MVP
 
 - У PDF есть стабильная страница, поэтому позицию чтения и аннотации проще синхронизировать между Mac и iPhone.
@@ -117,8 +133,71 @@
 
 - `ReaderMac` продолжает существовать как основной ingestion client.
 - `ReaderiPhone` становится lightweight reading client.
+- `ReaderShared` содержит общую доменную логику и платформенно-нейтральные модели.
+- `ReaderSync` содержит CloudKit sync boundary, DTO, mapper-ы и merge rules.
 - На обоих устройствах остаётся локальная `SQLite` база как cache и local source for UI.
 - Между устройствами синхронизируются не локальные файлы БД, а отдельные sync entities через `CloudKit`.
+
+### 6.1.1 Рекомендуемая структура monorepo
+
+Предлагаемая структура в этом репозитории:
+
+```text
+Reader/
+  App/                    -- macOS app composition
+  Features/               -- macOS-specific UI/features
+  Bridge/                 -- текущий EPUB bridge
+  Database/               -- локальная SQLite/GRDB
+  Shared/                 -- уже существующий shared слой
+  Sync/                   -- новый CloudKit sync слой
+
+ReaderiPhone/
+  App/                    -- iOS app composition
+  Features/               -- iPhone-specific UI/features
+
+ReaderShared/
+  Models/
+  Repositories/
+  ReaderCore/
+  Utilities/
+
+ReaderSync/
+  CloudKit/
+  Mapping/
+  Merge/
+```
+
+На старте это не обязательно должны быть отдельные Swift Packages. Для MVP достаточно начать с групп/директорий внутри одного Xcode-проекта, но с жёсткими архитектурными границами.
+
+### 6.1.2 Что должно жить в каждом слое
+
+В `ReaderShared`:
+
+- модели книг, прогресса и highlights;
+- repository-протоколы;
+- часть reader/business logic, не завязанная на `AppKit`/`UIKit`;
+- общие утилиты для anchor/format/sync metadata.
+
+В `ReaderSync`:
+
+- `SyncCoordinator`;
+- `CloudKitSyncService`;
+- DTO и mapper-ы;
+- dedup logic;
+- merge rules;
+- conflict policy.
+
+В `Reader`:
+
+- macOS import flow;
+- macOS-specific PDF and EPUB UI;
+- `AppKit`-зависимые renderer-ы.
+
+В `ReaderiPhone`:
+
+- iPhone library UI;
+- iPhone PDF reader UI;
+- mobile-specific interaction layer.
 
 ### 6.2 Решение по sync substrate
 
