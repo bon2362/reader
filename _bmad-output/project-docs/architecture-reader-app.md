@@ -3,7 +3,7 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-04-18'
-inputDocuments: ['prd.md']
+inputDocuments: ['prd-reader-app.md']
 workflowType: 'architecture'
 project_name: 'Reader App'
 user_name: 'Koshkin'

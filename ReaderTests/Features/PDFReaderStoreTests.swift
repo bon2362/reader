@@ -134,4 +134,60 @@ struct PDFReaderStoreTests {
         #expect(entries[0].href == PDFAnchor.encodePage(0))
         #expect(entries[0].level == 1)
     }
+
+    @Test func pageChangeIgnoresPagesOutsideDocument() async throws {
+        let db = try DatabaseManager.inMemory()
+        let library = LibraryRepository(database: db)
+        let annotations = AnnotationRepository(database: db)
+        let url = try TestPDFFactory.makeTextPDF(
+            text: "Hello PDF world",
+            title: "Outline PDF",
+            author: "Tester"
+        )
+        let foreignURL = try TestPDFFactory.makeTextPDF(
+            text: "Other PDF",
+            title: "Foreign PDF",
+            author: "Tester"
+        )
+        defer { try? FileManager.default.removeItem(at: url) }
+        defer { try? FileManager.default.removeItem(at: foreignURL) }
+
+        let book = Book(
+            title: "Outline PDF",
+            author: "Tester",
+            filePath: url.path,
+            lastCFI: "pdf:0",
+            totalPages: 1,
+            currentPage: 1,
+            format: .pdf
+        )
+
+        let store = try PDFReaderStore(
+            book: book,
+            resolvedURL: url,
+            libraryRepository: library,
+            tocStore: TOCStore(),
+            searchStore: SearchStore(),
+            highlightsStore: HighlightsStore(repository: annotations),
+            textNotesStore: TextNotesStore(repository: annotations),
+            stickyNotesStore: StickyNotesStore(repository: annotations),
+            annotationPanelStore: AnnotationPanelStore(
+                highlightsStore: HighlightsStore(repository: annotations),
+                textNotesStore: TextNotesStore(repository: annotations),
+                stickyNotesStore: StickyNotesStore(repository: annotations),
+                tocStore: TOCStore()
+            )
+        )
+
+        let foreignDocument = try #require(PDFDocument(url: foreignURL))
+        let foreignPage = try #require(foreignDocument.page(at: 0))
+        let pdfView = PDFView()
+        pdfView.document = foreignDocument
+        pdfView.go(to: foreignPage)
+
+        store.handlePageChange(in: pdfView)
+
+        #expect(store.currentPageIndex == 0)
+        #expect(store.currentPageNumber == 1)
+    }
 }

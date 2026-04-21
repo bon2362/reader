@@ -125,6 +125,45 @@ struct ReaderStoreTests {
         #expect(store.currentCFI == "x")
     }
 
+    @Test func reopeningSamePDFBookRefreshesSavedPosition() async throws {
+        let db = try DatabaseManager.inMemory()
+        let lib = LibraryRepository(database: db)
+        let ann = AnnotationRepository(database: db)
+        let store = ReaderStore(libraryRepository: lib, annotationRepository: ann)
+        let url = try TestPDFFactory.makeTextPDF(text: "Hello PDF world", title: "PDF")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let original = Book(
+            id: "pdf-book",
+            title: "PDF",
+            filePath: url.path,
+            lastCFI: "pdf:0",
+            totalPages: 1,
+            currentPage: 1,
+            format: .pdf
+        )
+
+        store.openPDFBook(original, resolvedURL: url)
+        let firstStore = try #require(store.pdfStore)
+        #expect(firstStore.book.lastCFI == "pdf:0")
+
+        let updated = Book(
+            id: "pdf-book",
+            title: "PDF",
+            filePath: url.path,
+            lastCFI: "pdf:7",
+            totalPages: 19,
+            currentPage: 8,
+            format: .pdf
+        )
+
+        store.openPDFBook(updated, resolvedURL: url)
+        let reopenedStore = try #require(store.pdfStore)
+        #expect(reopenedStore !== firstStore)
+        #expect(reopenedStore.book.lastCFI == "pdf:7")
+        #expect(reopenedStore.book.currentPage == 8)
+    }
+
     @Test func pageChangedTracksPageInChapterFromBridge() async throws {
         let (store, bridge, _, _) = try makeSetup()
         bridge.pageInCurrentChapter = 4

@@ -100,7 +100,9 @@ final class PDFReaderStore {
 
     func handlePageChange(in pdfView: PDFView) {
         guard let page = pdfView.currentPage else { return }
-        currentPageIndex = document.index(for: page)
+        let pageIndex = document.index(for: page)
+        guard isValidPageIndex(pageIndex) else { return }
+        currentPageIndex = pageIndex
         currentPageNumber = currentPageIndex + 1
         tocStore.updateCurrentPDFPage(currentPageIndex)
         canGoBackFromLink = pdfView.canGoBack
@@ -229,6 +231,10 @@ final class PDFReaderStore {
         let index = PDFAnchor.parse(book.lastCFI ?? "")?.pageIndex
             ?? max(0, (book.currentPage ?? 1) - 1)
         goToPage(index)
+    }
+
+    private func isValidPageIndex(_ index: Int) -> Bool {
+        index != NSNotFound && index >= 0 && index < document.pageCount
     }
 
     private func overlayRect(from pdfViewRect: CGRect) -> CGRect {

@@ -106,10 +106,6 @@ final class ReaderStore {
     }
 
     func openPDFBook(_ book: Book, resolvedURL: URL) {
-        if currentBook?.id == book.id, pdfStore != nil {
-            return
-        }
-
         do {
             let store = try PDFReaderStore(
                 book: book,

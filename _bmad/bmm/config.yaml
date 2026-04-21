@@ -5,8 +5,8 @@
 
 project_name: reader
 user_skill_level: intermediate
-planning_artifacts: "{project-root}/_bmad-output/planning-artifacts"
-implementation_artifacts: "{project-root}/_bmad-output/implementation-artifacts"
+planning_artifacts: "{project-root}/_bmad-output/project-docs"
+implementation_artifacts: "{project-root}/_bmad-output/feature-docs"
 project_knowledge: "{project-root}/docs"
 
 # Core Configuration Values
