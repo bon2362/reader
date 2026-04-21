@@ -9,9 +9,11 @@ final class LibraryStore {
     var errorMessage: String?
 
     private let repository: LibraryRepositoryProtocol
+    private let syncCoordinator: SyncCoordinator?
 
-    init(repository: LibraryRepositoryProtocol) {
+    init(repository: LibraryRepositoryProtocol, syncCoordinator: SyncCoordinator? = nil) {
         self.repository = repository
+        self.syncCoordinator = syncCoordinator
     }
 
     func loadBooks() async {
@@ -29,6 +31,7 @@ final class LibraryStore {
         do {
             let book = try await BookImporter.importBook(from: url, using: repository)
             books.insert(book, at: 0)
+            await syncCoordinator?.enqueueBookUpload(bookID: book.id)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -48,6 +51,7 @@ final class LibraryStore {
             try await repository.delete(id: id)
             try FileAccess.deleteBookFiles(bookId: id)
             books.removeAll { $0.id == id }
+            await syncCoordinator?.enqueueBookUpload(bookID: id)
         } catch {
             errorMessage = error.localizedDescription
         }

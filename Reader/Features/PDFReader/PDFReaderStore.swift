@@ -22,6 +22,8 @@ final class PDFReaderStore {
     let annotationPanelStore: AnnotationPanelStore
 
     private let libraryRepository: LibraryRepositoryProtocol
+    private let progressSyncer: ProgressSyncing?
+    private let syncCoordinator: SyncCoordinator?
     private weak var pdfView: PDFView?
     private var started = false
     private var awaitingInitialDisplay = true
@@ -37,7 +39,9 @@ final class PDFReaderStore {
         textNotesStore: TextNotesStore,
         stickyNotesStore: StickyNotesStore,
         annotationPanelStore: AnnotationPanelStore,
-        onStateChange: @escaping @MainActor (PDFReaderStore) -> Void = { _ in }
+        onStateChange: @escaping @MainActor (PDFReaderStore) -> Void = { _ in },
+        progressSyncer: ProgressSyncing? = nil,
+        syncCoordinator: SyncCoordinator? = nil
     ) throws {
         self.book = book
         self.document = try PDFBookLoader.loadDocument(from: resolvedURL)
@@ -51,6 +55,8 @@ final class PDFReaderStore {
         self.stickyNotesStore = stickyNotesStore
         self.annotationPanelStore = annotationPanelStore
         self.onStateChange = onStateChange
+        self.progressSyncer = progressSyncer
+        self.syncCoordinator = syncCoordinator
 
         tocStore.setEntries(Self.makeTOCEntries(document: document))
         searchStore.bindHandlers(
@@ -289,10 +295,16 @@ final class PDFReaderStore {
 
     private func persistProgress() {
         let currentAnchor = PDFAnchor.encodePage(currentPageIndex)
-        Task.detached { [libraryRepository, bookId = book.id, currentPageNumber, totalPages] in
+        Task.detached { [libraryRepository, progressSyncer, bookId = book.id, currentPageNumber, totalPages] in
             try? await libraryRepository.updateReadingProgress(
                 id: bookId,
                 lastCFI: currentAnchor,
+                currentPage: currentPageNumber,
+                totalPages: totalPages
+            )
+            await progressSyncer?.publishStableProgress(
+                bookID: bookId,
+                lastReadAnchor: currentAnchor,
                 currentPage: currentPageNumber,
                 totalPages: totalPages
             )

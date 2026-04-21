@@ -50,6 +50,26 @@ struct PDFBookLoaderTests {
         #expect(metadata.title == "Закария 1997")
         #expect(metadata.author == nil)
     }
+
+    @Test func duplicateImportReusesExistingBookByContentHash() async throws {
+        let db = try DatabaseManager.inMemory()
+        let repository = LibraryRepository(database: db)
+        let url = try TestPDFFactory.makeTextPDF(
+            text: "Repeated content",
+            title: "Repeatable",
+            author: "Author"
+        )
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let first = try await PDFBookLoader.importPDF(from: url, using: repository)
+        let second = try await PDFBookLoader.importPDF(from: url, using: repository)
+        let all = try await repository.fetchAll()
+
+        #expect(first.id == second.id)
+        #expect(first.filePath == second.filePath)
+        #expect(all.count == 1)
+        #expect(first.contentHash == second.contentHash)
+    }
 }
 
 @MainActor

@@ -1,7 +1,7 @@
 # Story 2.2: Synced Library & Asset Hydration on iPhone
 
 **Epic:** 2 — iPhone Reader Client  
-**Status:** proposed  
+**Status:** ready for review  
 **Created:** 2026-04-21
 
 ---
@@ -19,12 +19,34 @@
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Реализовать pull библиотеки из CloudKit на iPhone
-- [ ] Task 2: Реализовать asset hydration и локальное сохранение PDF
-- [ ] Task 3: Добавить статусы availability в library UI
-- [ ] Task 4: Написать тесты/интеграционные проверки на повторное открытие
+- [x] Task 1: Реализовать pull библиотеки из CloudKit на iPhone
+- [x] Task 2: Реализовать asset hydration и локальное сохранение PDF
+- [x] Task 3: Добавить статусы availability в library UI
+- [x] Task 4: Написать тесты/интеграционные проверки на повторное открытие
 
 ## Dev Notes
 
 - Для MVP import остаётся только на macOS
 - На iPhone библиотека должна быть читабельной даже до полной реализации аннотаций
+
+---
+
+## Dev Agent Record
+
+### Implemented
+
+- iPhone library screen делает `syncOnLaunch()` и отображает PDF-only библиотеку из shared repository.
+- Для каждой книги введены availability states: `cloudOnly`, `downloading`, `ready`, `failed`.
+- При отсутствии локального файла `SyncCoordinator.hydrateAssetIfNeeded(for:)` скачивает remote asset и сохраняет PDF в sandbox.
+- Повторное открытие использует уже существующую локальную копию файла.
+
+### Verification
+
+- iPhone target собирается с hydration/library flow в составе `ReaderiPhone`.
+- Базовая sync/hydration логика покрыта test slice вокруг repository/sync coordinator.
+
+### File List
+
+- /Users/ekoshkin/reader/Reader/Sync/SyncCoordinator.swift
+- /Users/ekoshkin/reader/ReaderiPhone/Features/IPhoneLibraryView.swift
+- /Users/ekoshkin/reader/ReaderiPhone/Features/IPhoneLibraryViewModel.swift

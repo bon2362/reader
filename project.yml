@@ -7,6 +7,7 @@ options:
   bundleIdPrefix: com.koshkin
   deploymentTarget:
     macOS: "14.0"
+    iOS: "17.0"
   xcodeVersion: "16.0"
   createIntermediateGroups: true
 
@@ -44,6 +45,41 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "slow reader"
         INFOPLIST_KEY_CFBundleName: "slow reader"
+
+  ReaderiPhone:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Reader/App/AppContainer.swift
+      - path: Reader/Database
+      - path: Reader/Bridge/EPUBBridgeProtocol.swift
+      - path: Reader/Bridge/BridgeTypes.swift
+      - path: Reader/Bridge/AnnotationAnchor.swift
+      - path: Reader/Features/Annotations/AnnotationRepository.swift
+      - path: Reader/Features/Annotations/HighlightsStore.swift
+      - path: Reader/Features/Library/LibraryRepository.swift
+      - path: Reader/Features/Reader/TOCEntry.swift
+      - path: Reader/Features/PDFReader/PDFAnchor.swift
+      - path: Reader/Features/PDFReader/PDFHighlightRenderer.swift
+      - path: Reader/Features/PDFReader/PDFMarkupGeometry.swift
+      - path: Reader/Shared
+      - path: Reader/Sync
+      - path: ReaderiPhone
+    resources:
+      - path: Reader/Resources/Assets.xcassets
+    dependencies:
+      - package: GRDB
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.koshkin.readeriphone
+        SWIFT_VERSION: "6.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "slow reader iPhone"
+        INFOPLIST_KEY_CFBundleName: "slow reader iPhone"
+        TARGETED_DEVICE_FAMILY: "1"
 
   ReaderTests:
     type: bundle.unit-test

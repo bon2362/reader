@@ -88,9 +88,15 @@ enum BookImporter {
         }
 
         let metadata = try parseMetadata(from: sourceURL)
+        let contentHash = try FileHash.sha256(for: sourceURL)
+
+        if let existingBook = try await repository.fetchByContentHash(contentHash) {
+            return existingBook
+        }
 
         let bookId = UUID().uuidString
         let destinationURL = try FileAccess.copyEPUBToSandbox(from: sourceURL, bookId: bookId)
+        let importedAt = Date()
 
         var coverPath: String?
         if let data = metadata.coverData {
@@ -103,7 +109,11 @@ enum BookImporter {
             author: metadata.author,
             coverPath: coverPath,
             filePath: destinationURL.path,
-            addedAt: Date()
+            addedAt: importedAt,
+            format: .epub,
+            contentHash: contentHash,
+            syncState: Book.SyncState.pendingUpload.rawValue,
+            updatedAt: importedAt
         )
 
         try await repository.insert(book)

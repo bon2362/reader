@@ -116,4 +116,65 @@ struct LibraryRepositoryTests {
         let fetched = try await repo.fetch(id: book.id)
         #expect(fetched?.format == .pdf)
     }
+
+    @Test func persistsSyncMetadata() async throws {
+        let repo = try makeRepo()
+        let timestamp = Date(timeIntervalSince1970: 1_700_000_000)
+        let book = Book(
+            title: "Synced",
+            filePath: "/tmp/synced.pdf",
+            format: .pdf,
+            contentHash: "hash-1",
+            syncState: Book.SyncState.pendingUpload.rawValue,
+            remoteRecordName: "book-record",
+            updatedAt: timestamp,
+            deletedAt: nil,
+            progressUpdatedAt: timestamp.addingTimeInterval(5),
+            assetUpdatedAt: timestamp.addingTimeInterval(10)
+        )
+        try await repo.insert(book)
+
+        let fetched = try await repo.fetch(id: book.id)
+        #expect(fetched?.contentHash == "hash-1")
+        #expect(fetched?.syncState == Book.SyncState.pendingUpload.rawValue)
+        #expect(fetched?.remoteRecordName == "book-record")
+        #expect(fetched?.updatedAt == timestamp)
+        #expect(fetched?.progressUpdatedAt == timestamp.addingTimeInterval(5))
+        #expect(fetched?.assetUpdatedAt == timestamp.addingTimeInterval(10))
+    }
+
+    @Test func fetchesBookByContentHash() async throws {
+        let repo = try makeRepo()
+        let book = Book(title: "By Hash", filePath: "/tmp/hash.pdf", contentHash: "same-hash")
+        try await repo.insert(book)
+
+        let fetched = try await repo.fetchByContentHash("same-hash")
+        #expect(fetched?.id == book.id)
+    }
+
+    @Test func updatesSyncMetadata() async throws {
+        let repo = try makeRepo()
+        let book = Book(title: "Pending", filePath: "/tmp/pending.pdf")
+        try await repo.insert(book)
+
+        let updatedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let deletedAt = updatedAt.addingTimeInterval(60)
+        try await repo.updateSyncMetadata(
+            id: book.id,
+            remoteRecordName: "remote-1",
+            syncState: Book.SyncState.synced.rawValue,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            progressUpdatedAt: updatedAt.addingTimeInterval(10),
+            assetUpdatedAt: updatedAt.addingTimeInterval(20)
+        )
+
+        let fetched = try await repo.fetch(id: book.id)
+        #expect(fetched?.remoteRecordName == "remote-1")
+        #expect(fetched?.syncState == Book.SyncState.synced.rawValue)
+        #expect(fetched?.updatedAt == updatedAt)
+        #expect(fetched?.deletedAt == deletedAt)
+        #expect(fetched?.progressUpdatedAt == updatedAt.addingTimeInterval(10))
+        #expect(fetched?.assetUpdatedAt == updatedAt.addingTimeInterval(20))
+    }
 }

@@ -1,6 +1,13 @@
-import AppKit
 import Foundation
 import PDFKit
+
+#if canImport(UIKit)
+import UIKit
+private typealias PlatformColor = UIColor
+#else
+import AppKit
+private typealias PlatformColor = NSColor
+#endif
 
 @MainActor
 enum PDFHighlightRenderer {
@@ -35,7 +42,7 @@ enum PDFHighlightRenderer {
         }
     }
 
-    private static func nsColor(for color: HighlightColor) -> NSColor {
+    private static func nsColor(for color: HighlightColor) -> PlatformColor {
         switch color {
         case .yellow: return .systemYellow
         case .red: return .systemRed

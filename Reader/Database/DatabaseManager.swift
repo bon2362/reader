@@ -43,6 +43,8 @@ final class DatabaseManager {
         migrator.registerMigration(Migration_003.identifier, migrate: Migration_003.migrate)
         migrator.registerMigration(Migration_004.identifier, migrate: Migration_004.migrate)
         migrator.registerMigration(Migration_005.identifier, migrate: Migration_005.migrate)
+        migrator.registerMigration(Migration_006.identifier, migrate: Migration_006.migrate)
+        migrator.registerMigration(Migration_007.identifier, migrate: Migration_007.migrate)
         do {
             try migrator.migrate(writer)
         } catch {

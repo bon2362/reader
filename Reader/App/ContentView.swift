@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    private let container: AppContainer
     @State private var libraryStore: LibraryStore
     @State private var readerStore: ReaderStore
     @State private var openedBook: (book: Book, url: URL)?
@@ -8,13 +9,19 @@ struct ContentView: View {
 
     init() {
         do {
-            let db = try DatabaseManager.onDisk()
-            let libraryRepo = LibraryRepository(database: db)
-            let annotationRepo = AnnotationRepository(database: db)
-            _libraryStore = State(initialValue: LibraryStore(repository: libraryRepo))
+            let container = try AppContainer()
+            self.container = container
+            let libraryRepo = container.libraryRepository
+            let annotationRepo = container.annotationRepository
+            _libraryStore = State(initialValue: LibraryStore(
+                repository: libraryRepo,
+                syncCoordinator: container.syncCoordinator
+            ))
             _readerStore = State(initialValue: ReaderStore(
                 libraryRepository: libraryRepo,
-                annotationRepository: annotationRepo
+                annotationRepository: annotationRepo,
+                progressSyncer: container.syncCoordinator,
+                syncCoordinator: container.syncCoordinator
             ))
         } catch {
             fatalError("Не удалось инициализировать базу данных: \(error.localizedDescription)")
@@ -41,5 +48,8 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 900, minHeight: 650)
+        .task {
+            await container.syncCoordinator.syncOnLaunch()
+        }
     }
 }

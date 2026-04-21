@@ -55,8 +55,15 @@ enum PDFBookLoader {
 
     static func importPDF(from sourceURL: URL, using repository: LibraryRepositoryProtocol) async throws -> Book {
         let metadata = try parseMetadata(from: sourceURL)
+        let contentHash = try FileHash.sha256(for: sourceURL)
+
+        if let existingBook = try await repository.fetchByContentHash(contentHash) {
+            return existingBook
+        }
+
         let bookId = UUID().uuidString
         let destinationURL = try FileAccess.copyPDFToSandbox(from: sourceURL, bookId: bookId)
+        let importedAt = Date()
 
         var coverPath: String?
         if let coverData = metadata.coverData {
@@ -69,11 +76,15 @@ enum PDFBookLoader {
             author: metadata.author,
             coverPath: coverPath,
             filePath: destinationURL.path,
-            addedAt: Date(),
+            addedAt: importedAt,
             lastCFI: "pdf:0",
             totalPages: metadata.pageCount,
             currentPage: metadata.pageCount > 0 ? 1 : 0,
-            format: .pdf
+            format: .pdf,
+            contentHash: contentHash,
+            syncState: Book.SyncState.pendingUpload.rawValue,
+            updatedAt: importedAt,
+            assetUpdatedAt: importedAt
         )
 
         try await repository.insert(book)

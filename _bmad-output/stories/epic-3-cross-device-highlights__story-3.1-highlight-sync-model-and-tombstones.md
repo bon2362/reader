@@ -1,7 +1,7 @@
 # Story 3.1: Highlight Sync Model & Tombstones
 
 **Epic:** 3 — Cross-Device Highlights  
-**Status:** proposed  
+**Status:** ready for review  
 **Created:** 2026-04-21
 
 ---
@@ -20,12 +20,37 @@
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Ввести sync DTO для highlights
-- [ ] Task 2: Добавить `updatedAt` / `deletedAt` merge policy
-- [ ] Task 3: Реализовать apply remote upsert/delete в локальную БД
-- [ ] Task 4: Написать тесты на tombstones
+- [x] Task 1: Ввести sync DTO для highlights
+- [x] Task 2: Добавить `updatedAt` / `deletedAt` merge policy
+- [x] Task 3: Реализовать apply remote upsert/delete в локальную БД
+- [x] Task 4: Написать тесты на tombstones
 
 ## Dev Notes
 
 - Локальная модель highlights уже существует в [Highlight.swift](/Users/ekoshkin/reader/Reader/Database/Models/Highlight.swift:1)
 - Для MVP достаточно `last-write-wins` + tombstones
+
+---
+
+## Dev Agent Record
+
+### Implemented
+
+- Добавлены `SyncedHighlightRecord` и `CloudKitHighlightMapper`.
+- Локальная модель `Highlight` и `AnnotationRepository` расширены полями `updatedAt`, `deletedAt`, `remoteRecordName`, `syncState`.
+- Удаление highlight теперь идёт через tombstone, а remote upsert/delete применяются по `last-write-wins`.
+- Локальные заметки, привязанные к highlight, отвязываются при удалении highlight, чтобы сохранить старое поведение UI.
+
+### Tests
+
+- `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test -project /Users/ekoshkin/reader/Reader.xcodeproj -scheme Reader -destination 'platform=macOS' -derivedDataPath /tmp/reader-derived-data -only-testing:ReaderTests/LibraryRepositoryTests -only-testing:ReaderTests/AnnotationRepositoryTests -only-testing:ReaderTests/PDFBookLoaderTests -only-testing:ReaderTests/CloudKitBookMapperTests -only-testing:ReaderTests/CloudKitHighlightMapperTests -only-testing:ReaderTests/SyncCoordinatorTests`
+
+### File List
+
+- /Users/ekoshkin/reader/Reader/Database/Migrations/Migration_007.swift
+- /Users/ekoshkin/reader/Reader/Database/Models/Highlight.swift
+- /Users/ekoshkin/reader/Reader/Features/Annotations/AnnotationRepository.swift
+- /Users/ekoshkin/reader/Reader/Sync/CloudKitHighlightMapper.swift
+- /Users/ekoshkin/reader/Reader/Sync/SyncedHighlightRecord.swift
+- /Users/ekoshkin/reader/ReaderTests/Database/CloudKitHighlightMapperTests.swift
+- /Users/ekoshkin/reader/ReaderTests/Database/AnnotationRepositoryTests.swift

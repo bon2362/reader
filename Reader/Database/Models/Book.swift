@@ -2,6 +2,13 @@ import Foundation
 import GRDB
 
 struct Book: Identifiable, Codable, Hashable {
+    enum SyncState: String, Codable {
+        case localOnly
+        case pendingUpload
+        case synced
+        case pendingDelete
+    }
+
     var id: String
     var title: String
     var author: String?
@@ -15,6 +22,13 @@ struct Book: Identifiable, Codable, Hashable {
     var currentPage: Int?
     var chapterPageCountsJSON: String?
     var format: BookFormat
+    var contentHash: String
+    var syncState: String
+    var remoteRecordName: String?
+    var updatedAt: Date
+    var deletedAt: Date?
+    var progressUpdatedAt: Date?
+    var assetUpdatedAt: Date?
 
     init(
         id: String = UUID().uuidString,
@@ -29,7 +43,14 @@ struct Book: Identifiable, Codable, Hashable {
         totalPages: Int? = nil,
         currentPage: Int? = nil,
         chapterPageCountsJSON: String? = nil,
-        format: BookFormat = .epub
+        format: BookFormat = .epub,
+        contentHash: String = "",
+        syncState: String = SyncState.localOnly.rawValue,
+        remoteRecordName: String? = nil,
+        updatedAt: Date = Date(),
+        deletedAt: Date? = nil,
+        progressUpdatedAt: Date? = nil,
+        assetUpdatedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -44,6 +65,13 @@ struct Book: Identifiable, Codable, Hashable {
         self.currentPage = currentPage
         self.chapterPageCountsJSON = chapterPageCountsJSON
         self.format = format
+        self.contentHash = contentHash
+        self.syncState = syncState
+        self.remoteRecordName = remoteRecordName
+        self.updatedAt = updatedAt
+        self.deletedAt = deletedAt
+        self.progressUpdatedAt = progressUpdatedAt
+        self.assetUpdatedAt = assetUpdatedAt
     }
 
     var progress: Double {
@@ -62,6 +90,10 @@ struct Book: Identifiable, Codable, Hashable {
         guard let data = try? JSONEncoder().encode(counts),
               let s = String(data: data, encoding: .utf8) else { return nil }
         return s
+    }
+
+    var syncStateValue: SyncState {
+        SyncState(rawValue: syncState) ?? .localOnly
     }
 }
 
@@ -82,6 +114,13 @@ extension Book: FetchableRecord, PersistableRecord {
         static let currentPage  = Column(CodingKeys.currentPage)
         static let chapterPageCountsJSON = Column(CodingKeys.chapterPageCountsJSON)
         static let format       = Column(CodingKeys.format)
+        static let contentHash  = Column(CodingKeys.contentHash)
+        static let syncState    = Column(CodingKeys.syncState)
+        static let remoteRecordName = Column(CodingKeys.remoteRecordName)
+        static let updatedAt    = Column(CodingKeys.updatedAt)
+        static let deletedAt    = Column(CodingKeys.deletedAt)
+        static let progressUpdatedAt = Column(CodingKeys.progressUpdatedAt)
+        static let assetUpdatedAt = Column(CodingKeys.assetUpdatedAt)
     }
 
     enum CodingKeys: String, CodingKey {
@@ -98,5 +137,12 @@ extension Book: FetchableRecord, PersistableRecord {
         case currentPage  = "current_page"
         case chapterPageCountsJSON = "chapter_page_counts"
         case format
+        case contentHash = "content_hash"
+        case syncState = "sync_state"
+        case remoteRecordName = "remote_record_name"
+        case updatedAt = "updated_at"
+        case deletedAt = "deleted_at"
+        case progressUpdatedAt = "progress_updated_at"
+        case assetUpdatedAt = "asset_updated_at"
     }
 }

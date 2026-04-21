@@ -48,6 +48,93 @@ struct AnnotationRepositoryTests {
         #expect(list.isEmpty)
     }
 
+    @Test func deleteHighlightLeavesTombstoneForSync() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let h = Highlight(bookId: book.id, cfiStart: "s", cfiEnd: "e", color: .green)
+        try await ann.insertHighlight(h)
+        try await ann.deleteHighlight(id: h.id)
+
+        let stored = try await ann.fetchHighlight(id: h.id, includeDeleted: true)
+        #expect(stored?.deletedAt != nil)
+        #expect(stored?.syncState == Highlight.SyncState.pendingDelete.rawValue)
+    }
+
+    @Test func applyRemoteHighlightUpsertMergesByRemoteRecordName() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let original = Highlight(
+            id: "h-1",
+            bookId: book.id,
+            cfiStart: "pdf:1",
+            cfiEnd: "pdf:1",
+            color: .yellow,
+            remoteRecordName: "remote-h-1",
+            syncState: Highlight.SyncState.synced.rawValue
+        )
+        try await ann.insertHighlight(original)
+        try await ann.markHighlightSynced(
+            id: original.id,
+            remoteRecordName: "remote-h-1",
+            updatedAt: original.updatedAt,
+            deletedAt: nil
+        )
+
+        try await ann.applyRemoteHighlightUpsert(
+            SyncedHighlightRecord(
+                highlightID: "h-1",
+                bookID: book.id,
+                anchor: "pdf:2",
+                color: .red,
+                selectedText: "updated",
+                remoteRecordName: "remote-h-1",
+                updatedAt: original.updatedAt.addingTimeInterval(30),
+                deletedAt: nil
+            )
+        )
+
+        let stored = try await ann.fetchHighlight(id: "h-1", includeDeleted: true)
+        #expect(stored?.color == .red)
+        #expect(stored?.cfiStart == "pdf:2")
+        #expect(stored?.selectedText == "updated")
+    }
+
+    @Test func applyRemoteHighlightTombstoneHidesHighlight() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let original = Highlight(
+            id: "h-2",
+            bookId: book.id,
+            cfiStart: "pdf:1",
+            cfiEnd: "pdf:1",
+            color: .yellow,
+            remoteRecordName: "remote-h-2",
+            syncState: Highlight.SyncState.synced.rawValue
+        )
+        try await ann.insertHighlight(original)
+        try await ann.markHighlightSynced(
+            id: original.id,
+            remoteRecordName: "remote-h-2",
+            updatedAt: original.updatedAt,
+            deletedAt: nil
+        )
+
+        try await ann.applyRemoteHighlightTombstone(
+            SyncedHighlightRecord(
+                highlightID: "h-2",
+                bookID: book.id,
+                anchor: "pdf:1",
+                color: .yellow,
+                selectedText: "",
+                remoteRecordName: "remote-h-2",
+                updatedAt: original.updatedAt.addingTimeInterval(10),
+                deletedAt: original.updatedAt.addingTimeInterval(10)
+            )
+        )
+
+        let visible = try await ann.fetchHighlights(bookId: book.id)
+        let stored = try await ann.fetchHighlight(id: "h-2", includeDeleted: true)
+        #expect(visible.isEmpty)
+        #expect(stored?.deletedAt != nil)
+    }
+
     // MARK: - Text Notes
 
     @Test func insertAndFetchTextNote() async throws {

@@ -31,6 +31,8 @@ final class ReaderStore {
 
     private var bridge: EPUBBridgeProtocol?
     private let libraryRepository: LibraryRepositoryProtocol
+    private let progressSyncer: ProgressSyncing?
+    private let syncCoordinator: SyncCoordinator?
     private var hideToolbarTask: Task<Void, Never>?
 
     // MARK: - Init
@@ -43,12 +45,19 @@ final class ReaderStore {
         searchStore: SearchStore = SearchStore(),
         highlightsStore: HighlightsStore? = nil,
         textNotesStore: TextNotesStore? = nil,
-        stickyNotesStore: StickyNotesStore? = nil
+        stickyNotesStore: StickyNotesStore? = nil,
+        progressSyncer: ProgressSyncing? = nil,
+        syncCoordinator: SyncCoordinator? = nil
     ) {
         self.libraryRepository = libraryRepository
+        self.progressSyncer = progressSyncer
+        self.syncCoordinator = syncCoordinator
         self.tocStore = tocStore
         self.searchStore = searchStore
-        self.highlightsStore = highlightsStore ?? HighlightsStore(repository: annotationRepository)
+        self.highlightsStore = highlightsStore ?? HighlightsStore(
+            repository: annotationRepository,
+            syncCoordinator: syncCoordinator
+        )
         self.textNotesStore = textNotesStore ?? TextNotesStore(repository: annotationRepository)
         let stickies = stickyNotesStore ?? StickyNotesStore(repository: annotationRepository)
         self.stickyNotesStore = stickies
@@ -83,6 +92,7 @@ final class ReaderStore {
 
         pdfStore = nil
         currentBook = book
+        Task { [syncCoordinator] in await syncCoordinator?.beginReading(bookID: book.id) }
         currentCFI = book.lastCFI
         currentPage = book.currentPage ?? 0
         totalPages = book.totalPages ?? 0
@@ -127,10 +137,13 @@ final class ReaderStore {
                     self.totalChapters = self.tocStore.entries.count
                     self.isPageCountReady = true
                     self.canGoBackFromLink = pdfStore.canGoBackFromLink
-                }
+                },
+                progressSyncer: progressSyncer,
+                syncCoordinator: syncCoordinator
             )
             pdfStore = store
             currentBook = book
+            Task { [syncCoordinator] in await syncCoordinator?.beginReading(bookID: book.id) }
             currentCFI = book.lastCFI
             currentPage = book.currentPage ?? 1
             totalPages = book.totalPages ?? 0
@@ -291,9 +304,15 @@ extension ReaderStore: EPUBBridgeDelegate {
     private func persistProgress(cfi: String, currentPage: Int, totalPages: Int) {
         guard let book = currentBook else { return }
         let id = book.id
-        Task.detached { [libraryRepository] in
+        Task.detached { [libraryRepository, progressSyncer] in
             try? await libraryRepository.updateReadingProgress(
                 id: id, lastCFI: cfi, currentPage: currentPage, totalPages: totalPages
+            )
+            await progressSyncer?.publishStableProgress(
+                bookID: id,
+                lastReadAnchor: cfi,
+                currentPage: currentPage,
+                totalPages: totalPages
             )
         }
     }

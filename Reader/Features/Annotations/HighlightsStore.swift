@@ -18,13 +18,15 @@ final class HighlightsStore {
     var errorMessage: String?
 
     private let repository: AnnotationRepositoryProtocol
+    private let syncCoordinator: HighlightSyncing?
     private weak var bridge: EPUBBridgeProtocol?
     private var bookId: String?
     private var externalRender: (@MainActor (Highlight) -> Void)?
     private var externalRemove: (@MainActor (String) -> Void)?
 
-    init(repository: AnnotationRepositoryProtocol) {
+    init(repository: AnnotationRepositoryProtocol, syncCoordinator: HighlightSyncing? = nil) {
         self.repository = repository
+        self.syncCoordinator = syncCoordinator
     }
 
     func bindBridge(_ bridge: EPUBBridgeProtocol) {
@@ -102,6 +104,7 @@ final class HighlightsStore {
             highlights.append(highlight)
             renderOnBridge(highlight)
             pendingSelection = nil
+            await syncCoordinator?.publishHighlightChange(id: highlight.id)
         } catch {
             errorMessage = "Не удалось сохранить хайлайт"
         }
@@ -127,6 +130,7 @@ final class HighlightsStore {
             bridge?.removeHighlight(id: id)
             externalRemove?(id)
             renderOnBridge(updated)
+            await syncCoordinator?.publishHighlightChange(id: id)
         } catch {
             errorMessage = "Не удалось обновить хайлайт"
         }
@@ -140,6 +144,7 @@ final class HighlightsStore {
             bridge?.removeHighlight(id: id)
             externalRemove?(id)
             activeHighlightId = nil
+            await syncCoordinator?.publishHighlightDeletion(id: id)
         } catch {
             errorMessage = "Не удалось удалить хайлайт"
         }
