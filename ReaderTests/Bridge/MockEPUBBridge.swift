@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 final class MockEPUBBridge: EPUBBridgeProtocol {
     weak var delegate: EPUBBridgeDelegate?
+    var pageInCurrentChapter: Int = 0
 
     var pingCallCount = 0
     var loadBookCalls: [URL] = []
@@ -18,6 +19,7 @@ final class MockEPUBBridge: EPUBBridgeProtocol {
     var getTOCCallCount = 0
     var setAnnotationsCalls: [[AnnotationAnchor]] = []
     var goToSpineCalls: [Int] = []
+    var goToSpinePageCalls: [(index: Int, pageInChapter: Int)] = []
 
     func ping() { pingCallCount += 1 }
     func loadBook(url: URL) { loadBookCalls.append(url) }
@@ -34,6 +36,9 @@ final class MockEPUBBridge: EPUBBridgeProtocol {
     func getTOC() { getTOCCallCount += 1 }
     func setAnnotations(_ anchors: [AnnotationAnchor]) { setAnnotationsCalls.append(anchors) }
     func goToSpine(index: Int) { goToSpineCalls.append(index) }
+    func goToSpine(index: Int, pageInChapter: Int) {
+        goToSpinePageCalls.append((index, pageInChapter))
+    }
     var setCachedChapterPageCountsCalls: [[Int]] = []
     func setCachedChapterPageCounts(_ counts: [Int]) { setCachedChapterPageCountsCalls.append(counts) }
     var setPendingInitialCFICalls: [String?] = []
@@ -82,4 +87,5 @@ final class DelegateRecorder: EPUBBridgeDelegate {
     func bridgeDidReceiveAnnotationPositions(_ positions: [AnnotationPosition]) {}
     func bridgeDidLoadTOC(_ entries: [TOCEntry]) {}
     func bridgeDidTapHighlight(id: String) {}
+    func bridgeDidFailToLoadBook(message: String) {}
 }

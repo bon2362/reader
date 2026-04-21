@@ -107,4 +107,13 @@ struct LibraryRepositoryTests {
         #expect(all[0].title == "Newer")
         #expect(all[1].title == "Older")
     }
+
+    @Test func persistsBookFormat() async throws {
+        let repo = try makeRepo()
+        let book = Book(title: "PDF", filePath: "/tmp/test.pdf", format: .pdf)
+        try await repo.insert(book)
+
+        let fetched = try await repo.fetch(id: book.id)
+        #expect(fetched?.format == .pdf)
+    }
 }

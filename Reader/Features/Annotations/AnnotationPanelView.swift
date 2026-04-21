@@ -115,7 +115,15 @@ private struct AnnotationRowView: View {
     private var metaLine: String? {
         switch item.kind {
         case .sticky:
-            if let s = item.spineIndex { return "Страница \(s + 1)" }
+            if let page = item.globalPage {
+                return "Страница \(page)"
+            }
+            if let spine = item.spineIndex, let page = item.pageInChapter {
+                return "Гл. \(spine + 1) · стр. \(page + 1)"
+            }
+            if let page = item.pageInChapter {
+                return "Страница \(page + 1)"
+            }
             return nil
         default:
             return nil

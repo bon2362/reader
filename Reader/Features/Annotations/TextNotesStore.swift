@@ -92,7 +92,7 @@ final class TextNotesStore {
         let note = TextNote(
             bookId: bookId,
             highlightId: highlightId,
-            cfiAnchor: "\(selection.cfiStart)||\(selection.cfiEnd)",
+            cfiAnchor: selection.cfiStart.hasPrefix("pdf:") ? selection.cfiStart : "\(selection.cfiStart)||\(selection.cfiEnd)",
             body: trimmed
         )
         do {

@@ -13,15 +13,55 @@ struct EPUBTOCNode: Sendable {
     let level: Int
 }
 
-struct EPUBBook: Sendable {
+final class EPUBBook: @unchecked Sendable {
     let rootDir: URL
     let opfDir: URL
     let chapters: [EPUBChapter]
     let toc: [EPUBTOCNode]
 
+    init(rootDir: URL, opfDir: URL, chapters: [EPUBChapter], toc: [EPUBTOCNode]) {
+        self.rootDir = rootDir
+        self.opfDir = opfDir
+        self.chapters = chapters
+        self.toc = toc
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: rootDir)
+    }
+
     func chapterIndex(forHref href: String) -> Int? {
         let normalized = EPUBBook.normalizeHref(href)
         return chapters.firstIndex { EPUBBook.normalizeHref($0.href) == normalized }
+    }
+
+    func search(query: String, limit: Int) -> [SearchResult] {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !needle.isEmpty, limit > 0 else { return [] }
+        var results: [SearchResult] = []
+
+        for chapter in chapters {
+            guard let html = try? String(contentsOf: chapter.fileURL, encoding: .utf8) else { continue }
+            let text = EPUBBook.htmlTextContent(html)
+            var searchStart = text.startIndex
+            while searchStart < text.endIndex,
+                  let range = text.range(
+                    of: needle,
+                    options: [.caseInsensitive, .diacriticInsensitive],
+                    range: searchStart..<text.endIndex
+                  ) {
+                let offset = range.lowerBound.utf16Offset(in: text)
+                let cfi = NativeEPUBBridge.makeOffsetAnchor(
+                    href: EPUBBook.normalizeHref(chapter.href),
+                    offset: offset
+                )
+                results.append(SearchResult(cfi: cfi, excerpt: EPUBBook.excerpt(in: text, around: range)))
+                if results.count >= limit { return results }
+                searchStart = range.upperBound
+            }
+        }
+
+        return results
     }
 
     static func normalizeHref(_ href: String) -> String {
@@ -29,6 +69,70 @@ struct EPUBBook: Sendable {
         if let hashIdx = s.firstIndex(of: "#") { s = String(s[..<hashIdx]) }
         while s.hasPrefix("/") { s.removeFirst() }
         return s
+    }
+
+    static func htmlTextContent(_ html: String) -> String {
+        var text = html.replacingOccurrences(
+            of: #"(?is)<(script|style)\b[^>]*>.*?</\1>"#,
+            with: "",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(of: #"(?s)<[^>]+>"#, with: "", options: .regularExpression)
+        return decodeHTMLEntities(text)
+    }
+
+    private static func excerpt(in text: String, around range: Range<String.Index>) -> String {
+        let context = 80
+        let lower = text.index(range.lowerBound, offsetBy: -context, limitedBy: text.startIndex) ?? text.startIndex
+        let upper = text.index(range.upperBound, offsetBy: context, limitedBy: text.endIndex) ?? text.endIndex
+        var excerpt = String(text[lower..<upper])
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if lower > text.startIndex { excerpt = "…" + excerpt }
+        if upper < text.endIndex { excerpt += "…" }
+        return excerpt
+    }
+
+    private static func decodeHTMLEntities(_ text: String) -> String {
+        var output = ""
+        var index = text.startIndex
+
+        while index < text.endIndex {
+            if text[index] == "&", let end = text[index...].firstIndex(of: ";") {
+                let entityStart = text.index(after: index)
+                let entity = String(text[entityStart..<end])
+                if let decoded = decodeEntity(entity) {
+                    output.append(decoded)
+                    index = text.index(after: end)
+                    continue
+                }
+            }
+            output.append(text[index])
+            index = text.index(after: index)
+        }
+
+        return output
+    }
+
+    private static func decodeEntity(_ entity: String) -> Character? {
+        switch entity {
+        case "amp": return "&"
+        case "lt": return "<"
+        case "gt": return ">"
+        case "quot": return "\""
+        case "apos": return "'"
+        case "nbsp": return " "
+        default:
+            if entity.hasPrefix("#x"),
+               let scalar = UInt32(entity.dropFirst(2), radix: 16).flatMap(UnicodeScalar.init) {
+                return Character(scalar)
+            }
+            if entity.hasPrefix("#"),
+               let scalar = UInt32(entity.dropFirst(), radix: 10).flatMap(UnicodeScalar.init) {
+                return Character(scalar)
+            }
+            return nil
+        }
     }
 }
 
@@ -57,52 +161,56 @@ enum EPUBBookLoader {
 
         do {
             try fm.unzipItem(at: epubURL, to: root)
+
+            let containerURL = root.appendingPathComponent("META-INF/container.xml")
+            guard let containerData = try? Data(contentsOf: containerURL),
+                  let opfRel = firstCapture(in: String(data: containerData, encoding: .utf8) ?? "",
+                                             pattern: #"<rootfile[^>]*full-path=\"([^\"]+)\""#) else {
+                throw EPUBBookError.missingContainer
+            }
+
+            let opfURL = root.appendingPathComponent(opfRel)
+            guard let opfData = try? Data(contentsOf: opfURL),
+                  let opfStr = String(data: opfData, encoding: .utf8) else {
+                throw EPUBBookError.missingOPF
+            }
+            let opfDir = opfURL.deletingLastPathComponent()
+
+            // Manifest: id → href
+            var manifest: [String: String] = [:]
+            enumerate(in: opfStr, pattern: #"<item\b[^>]*?>"#) { tag in
+                guard let id = firstCapture(in: tag, pattern: #"id=\"([^\"]+)\""#),
+                      let href = firstCapture(in: tag, pattern: #"href=\"([^\"]+)\""#) else { return }
+                manifest[id] = href
+            }
+
+            // Spine: ordered idrefs
+            var spineIds: [String] = []
+            enumerate(in: opfStr, pattern: #"<itemref\b[^>]*?>"#) { tag in
+                if let idref = firstCapture(in: tag, pattern: #"idref=\"([^\"]+)\""#) {
+                    spineIds.append(idref)
+                }
+            }
+
+            let chapters: [EPUBChapter] = spineIds.compactMap { id in
+                guard let href = manifest[id] else { return nil }
+                let url = opfDir.appendingPathComponent(href).standardizedFileURL
+                guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+                return EPUBChapter(id: id, href: href, fileURL: url)
+            }
+            guard !chapters.isEmpty else { throw EPUBBookError.missingSpine }
+
+            // TOC: try nav.xhtml (EPUB 3) first, then NCX (EPUB 2), fallback to spine
+            let toc = loadTOC(opfDir: opfDir, opfText: opfStr, manifest: manifest, chapters: chapters)
+
+            return EPUBBook(rootDir: root, opfDir: opfDir, chapters: chapters, toc: toc)
+        } catch let error as EPUBBookError {
+            try? fm.removeItem(at: root)
+            throw error
         } catch {
+            try? fm.removeItem(at: root)
             throw EPUBBookError.cannotUnzip
         }
-
-        let containerURL = root.appendingPathComponent("META-INF/container.xml")
-        guard let containerData = try? Data(contentsOf: containerURL),
-              let opfRel = firstCapture(in: String(data: containerData, encoding: .utf8) ?? "",
-                                         pattern: #"<rootfile[^>]*full-path=\"([^\"]+)\""#) else {
-            throw EPUBBookError.missingContainer
-        }
-
-        let opfURL = root.appendingPathComponent(opfRel)
-        guard let opfData = try? Data(contentsOf: opfURL),
-              let opfStr = String(data: opfData, encoding: .utf8) else {
-            throw EPUBBookError.missingOPF
-        }
-        let opfDir = opfURL.deletingLastPathComponent()
-
-        // Manifest: id → href
-        var manifest: [String: String] = [:]
-        enumerate(in: opfStr, pattern: #"<item\b[^>]*?>"#) { tag in
-            guard let id = firstCapture(in: tag, pattern: #"id=\"([^\"]+)\""#),
-                  let href = firstCapture(in: tag, pattern: #"href=\"([^\"]+)\""#) else { return }
-            manifest[id] = href
-        }
-
-        // Spine: ordered idrefs
-        var spineIds: [String] = []
-        enumerate(in: opfStr, pattern: #"<itemref\b[^>]*?>"#) { tag in
-            if let idref = firstCapture(in: tag, pattern: #"idref=\"([^\"]+)\""#) {
-                spineIds.append(idref)
-            }
-        }
-
-        let chapters: [EPUBChapter] = spineIds.compactMap { id in
-            guard let href = manifest[id] else { return nil }
-            let url = opfDir.appendingPathComponent(href).standardizedFileURL
-            guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-            return EPUBChapter(id: id, href: href, fileURL: url)
-        }
-        guard !chapters.isEmpty else { throw EPUBBookError.missingSpine }
-
-        // TOC: try nav.xhtml (EPUB 3) first, then NCX (EPUB 2), fallback to spine
-        let toc = loadTOC(opfDir: opfDir, opfText: opfStr, manifest: manifest, chapters: chapters)
-
-        return EPUBBook(rootDir: root, opfDir: opfDir, chapters: chapters, toc: toc)
     }
 
     // MARK: - TOC

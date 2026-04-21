@@ -42,7 +42,10 @@ struct LibraryView: View {
         }
         .fileImporter(
             isPresented: $showImporter,
-            allowedContentTypes: [UTType(filenameExtension: "epub") ?? .item],
+            allowedContentTypes: [
+                UTType(filenameExtension: "epub") ?? .item,
+                UTType.pdf
+            ],
             allowsMultipleSelection: false
         ) { result in
             handleImport(result)
@@ -65,9 +68,9 @@ struct LibraryView: View {
         ContentUnavailableView {
             Label("Нет книг", systemImage: "books.vertical")
         } description: {
-            Text("Нажмите + чтобы добавить EPUB файл")
+            Text("Нажмите + чтобы добавить EPUB или PDF файл")
         } actions: {
-            Button("Импорт EPUB") { showImporter = true }
+            Button("Импорт EPUB/PDF") { showImporter = true }
                 .buttonStyle(.borderedProminent)
         }
     }
