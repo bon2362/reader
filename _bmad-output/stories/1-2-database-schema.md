@@ -1,7 +1,7 @@
 # Story 1.2: Database Schema
 
 **Epic:** 1 — Foundation
-**Status:** review
+**Status:** done
 **Created:** 2026-04-18
 
 ---

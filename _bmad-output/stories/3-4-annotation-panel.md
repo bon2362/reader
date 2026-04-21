@@ -1,7 +1,7 @@
 # Story 3.4: Annotation Panel
 
 **Epic:** 3 — Annotations
-**Status:** review
+**Status:** done
 **Created:** 2026-04-19
 
 ---

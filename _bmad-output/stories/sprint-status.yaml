@@ -35,28 +35,28 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-18
-last_updated: 2026-04-19
+last_updated: 2026-04-21
 project: Reader App
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/stories
 
 development_status:
-  epic-1: in-progress
-  1-1-project-initialization: review
-  1-2-database-schema: review
+  epic-1: done
+  1-1-project-initialization: done
+  1-2-database-schema: done
   epic-1-retrospective: optional
 
-  epic-2: in-progress
-  2-1-epub-rendering-and-navigation: review
-  2-2-library: review
-  2-3-table-of-contents: review
-  2-4-text-search: review
+  epic-2: done
+  2-1-epub-rendering-and-navigation: done
+  2-2-library: done
+  2-3-table-of-contents: done
+  2-4-text-search: done
   epic-2-retrospective: optional
 
-  epic-3: in-progress
-  3-1-highlights: review
-  3-2-text-notes-type-a: review
-  3-3-sticky-notes-type-b: review
-  3-4-annotation-panel: review
+  epic-3: done
+  3-1-highlights: done
+  3-2-text-notes-type-a: done
+  3-3-sticky-notes-type-b: done
+  3-4-annotation-panel: done
   epic-3-retrospective: optional

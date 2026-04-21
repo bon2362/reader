@@ -1,7 +1,7 @@
 # Story 3.3: Sticky Notes (Type B)
 
 **Epic:** 3 — Annotations
-**Status:** review
+**Status:** done
 **Created:** 2026-04-18
 
 ---

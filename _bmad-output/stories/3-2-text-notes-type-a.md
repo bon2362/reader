@@ -1,7 +1,7 @@
 # Story 3.2: Text Notes (Type A)
 
 **Epic:** 3 — Annotations
-**Status:** review
+**Status:** done
 **Created:** 2026-04-18
 
 ---

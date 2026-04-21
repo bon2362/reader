@@ -1,7 +1,7 @@
 # Story 2.3: Table of Contents
 
 **Epic:** 2 — Core Reading
-**Status:** review
+**Status:** done
 **Created:** 2026-04-18
 
 ---
