@@ -90,18 +90,24 @@ struct LibraryView: View {
     }
 
     private func openBook(_ book: Book) {
-        guard let url = store.resolveBookURL(book) else {
-            store.errorMessage = "Файл книги не найден"
-            return
+        Task {
+            let latestBook = await store.latestBook(id: book.id) ?? book
+            guard let url = store.resolveBookURL(latestBook) else {
+                store.errorMessage = "Файл книги не найден"
+                return
+            }
+            onOpenBook(latestBook, url)
         }
-        onOpenBook(book, url)
     }
 
     private func openBookTest(_ book: Book) {
-        guard let url = store.resolveBookURL(book) else {
-            store.errorMessage = "Файл книги не найден"
-            return
+        Task {
+            let latestBook = await store.latestBook(id: book.id) ?? book
+            guard let url = store.resolveBookURL(latestBook) else {
+                store.errorMessage = "Файл книги не найден"
+                return
+            }
+            onOpenTest(latestBook, url)
         }
-        onOpenTest(book, url)
     }
 }

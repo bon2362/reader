@@ -15,9 +15,12 @@ final class TOCStore {
 
     func setEntries(_ entries: [TOCEntry]) {
         self.entries = entries
-        if currentEntryId == nil, let first = entries.first {
-            currentEntryId = first.id
+        guard let currentEntryId,
+              entries.contains(where: { $0.id == currentEntryId }) else {
+            self.currentEntryId = entries.first?.id
+            return
         }
+        self.currentEntryId = currentEntryId
     }
 
     func updateCurrentSection(href: String?) {

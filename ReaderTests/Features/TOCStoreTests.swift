@@ -29,6 +29,16 @@ struct TOCStoreTests {
         #expect(s.currentEntryId == "ch2")
     }
 
+    @Test func setEntriesResetsCurrentWhenPreviousEntryMissing() {
+        let s = TOCStore()
+        s.setEntries(sampleEntries())
+        s.currentEntryId = "ch2"
+        s.setEntries([
+            TOCEntry(id: "pdf-1", label: "PDF Chapter", href: "pdf:3", level: 0)
+        ])
+        #expect(s.currentEntryId == "pdf-1")
+    }
+
     @Test func updateCurrentSectionMatchesByHref() {
         let s = TOCStore()
         s.setEntries(sampleEntries())

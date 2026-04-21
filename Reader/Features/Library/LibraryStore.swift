@@ -33,6 +33,15 @@ final class LibraryStore {
         }
     }
 
+    func latestBook(id: String) async -> Book? {
+        do {
+            return try await repository.fetch(id: id)
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
     func deleteBook(id: String) async {
         do {
             try await repository.delete(id: id)

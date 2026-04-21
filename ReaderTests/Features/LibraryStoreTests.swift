@@ -55,6 +55,18 @@ struct LibraryStoreTests {
         #expect(store.resolveBookURL(book) != nil)
     }
 
+    @Test func latestBookReturnsFreshCopyFromRepository() async throws {
+        let (store, repo) = try makeStore()
+        let original = Book(title: "Original", filePath: "/a", currentPage: 1, format: .pdf)
+        try await repo.insert(original)
+        try await repo.updateReadingProgress(id: original.id, lastCFI: "pdf:7", currentPage: 8, totalPages: 19)
+
+        let latest = await store.latestBook(id: original.id)
+
+        #expect(latest?.lastCFI == "pdf:7")
+        #expect(latest?.currentPage == 8)
+    }
+
     @Test func importBookFromMinimalEPUB() async throws {
         let (store, _) = try makeStore()
 
