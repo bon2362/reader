@@ -4,6 +4,7 @@ import SwiftUI
 struct NativePDFView: NSViewRepresentable {
     let document: PDFDocument
     let onViewReady: (PDFView) -> Void
+    let onDisplayReady: (PDFView) -> Void
     let onPageChanged: (PDFView) -> Void
     let onSelectionChanged: (PDFView) -> Void
     let onHistoryChanged: (PDFView) -> Void
@@ -11,6 +12,7 @@ struct NativePDFView: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
+            onDisplayReady: onDisplayReady,
             onPageChanged: onPageChanged,
             onSelectionChanged: onSelectionChanged,
             onHistoryChanged: onHistoryChanged
@@ -25,6 +27,9 @@ struct NativePDFView: NSViewRepresentable {
         pdfView.displaysPageBreaks = true
         pdfView.document = document
         pdfView.onNoteAnnotationTap = onNoteAnnotationTap
+        pdfView.onPresentationChanged = { [weak coordinator = context.coordinator] pdfView in
+            coordinator?.notifyDisplayReadyIfPossible(for: pdfView)
+        }
         context.coordinator.attach(to: pdfView)
 
         DispatchQueue.main.async {
@@ -37,23 +42,36 @@ struct NativePDFView: NSViewRepresentable {
     func updateNSView(_ pdfView: PDFView, context: Context) {
         if pdfView.document !== document {
             pdfView.document = document
+            context.coordinator.resetDisplayReadiness()
         }
         if let pdfView = pdfView as? InteractivePDFView {
             pdfView.onNoteAnnotationTap = onNoteAnnotationTap
+            pdfView.onPresentationChanged = { [weak coordinator = context.coordinator] pdfView in
+                coordinator?.notifyDisplayReadyIfPossible(for: pdfView)
+            }
         }
+        context.coordinator.onDisplayReady = onDisplayReady
         context.coordinator.onPageChanged = onPageChanged
         context.coordinator.onSelectionChanged = onSelectionChanged
         context.coordinator.onHistoryChanged = onHistoryChanged
+        context.coordinator.notifyDisplayReadyIfPossible()
     }
 
     final class InteractivePDFView: PDFView {
         var onNoteAnnotationTap: ((String, CGPoint) -> Void)?
+        var onPresentationChanged: ((PDFView) -> Void)?
         private var trackingAreaRef: NSTrackingArea?
         private weak var hoveredAnnotation: PDFAnnotation?
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             window?.acceptsMouseMovedEvents = true
+            notifyPresentationChanged()
+        }
+
+        override func layout() {
+            super.layout()
+            notifyPresentationChanged()
         }
 
         override func updateTrackingAreas() {
@@ -127,20 +145,31 @@ struct NativePDFView: NSViewRepresentable {
             }
             self.hoveredAnnotation = nil
         }
+
+        private func notifyPresentationChanged() {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.onPresentationChanged?(self)
+            }
+        }
     }
 
     @MainActor
     final class Coordinator: NSObject {
+        var onDisplayReady: (PDFView) -> Void
         var onPageChanged: (PDFView) -> Void
         var onSelectionChanged: (PDFView) -> Void
         var onHistoryChanged: (PDFView) -> Void
         private weak var pdfView: PDFView?
+        private var hasReportedDisplayReady = false
 
         init(
+            onDisplayReady: @escaping (PDFView) -> Void,
             onPageChanged: @escaping (PDFView) -> Void,
             onSelectionChanged: @escaping (PDFView) -> Void,
             onHistoryChanged: @escaping (PDFView) -> Void
         ) {
+            self.onDisplayReady = onDisplayReady
             self.onPageChanged = onPageChanged
             self.onSelectionChanged = onSelectionChanged
             self.onHistoryChanged = onHistoryChanged
@@ -152,6 +181,7 @@ struct NativePDFView: NSViewRepresentable {
 
         func attach(to pdfView: PDFView) {
             self.pdfView = pdfView
+            hasReportedDisplayReady = false
             let center = NotificationCenter.default
             center.removeObserver(self)
             center.addObserver(
@@ -172,6 +202,47 @@ struct NativePDFView: NSViewRepresentable {
                 name: .PDFViewChangedHistory,
                 object: pdfView
             )
+            center.addObserver(
+                self,
+                selector: #selector(handleVisiblePagesChanged),
+                name: .PDFViewVisiblePagesChanged,
+                object: pdfView
+            )
+            center.addObserver(
+                self,
+                selector: #selector(handleScaleChanged),
+                name: .PDFViewScaleChanged,
+                object: pdfView
+            )
+
+            DispatchQueue.main.async { [weak self] in
+                self?.notifyDisplayReadyIfPossible()
+            }
+        }
+
+        func resetDisplayReadiness() {
+            hasReportedDisplayReady = false
+            DispatchQueue.main.async { [weak self] in
+                self?.notifyDisplayReadyIfPossible()
+            }
+        }
+
+        func notifyDisplayReadyIfPossible() {
+            guard let pdfView else { return }
+            notifyDisplayReadyIfPossible(for: pdfView)
+        }
+
+        func notifyDisplayReadyIfPossible(for pdfView: PDFView) {
+            guard self.pdfView === pdfView,
+                  !hasReportedDisplayReady else { return }
+            guard pdfView.document != nil,
+                  pdfView.window != nil,
+                  !pdfView.bounds.isEmpty else {
+                return
+            }
+
+            hasReportedDisplayReady = true
+            onDisplayReady(pdfView)
         }
 
         @objc private func handlePageChanged() {
@@ -187,6 +258,14 @@ struct NativePDFView: NSViewRepresentable {
         @objc private func handleHistoryChanged() {
             guard let pdfView else { return }
             onHistoryChanged(pdfView)
+        }
+
+        @objc private func handleVisiblePagesChanged() {
+            notifyDisplayReadyIfPossible()
+        }
+
+        @objc private func handleScaleChanged() {
+            notifyDisplayReadyIfPossible()
         }
     }
 }

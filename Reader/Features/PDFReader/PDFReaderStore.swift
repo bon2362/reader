@@ -24,6 +24,7 @@ final class PDFReaderStore {
     private let libraryRepository: LibraryRepositoryProtocol
     private weak var pdfView: PDFView?
     private var started = false
+    private var awaitingInitialDisplay = true
     private let onStateChange: @MainActor (PDFReaderStore) -> Void
 
     init(
@@ -90,25 +91,35 @@ final class PDFReaderStore {
 
     func attachPDFView(_ pdfView: PDFView) {
         self.pdfView = pdfView
-        pdfView.document = document
-        restorePosition()
-        syncNoteAnnotations()
+        if pdfView.document !== document {
+            pdfView.document = document
+        }
+        syncNoteAnnotations(notify: false)
         for highlight in highlightsStore.highlights {
             PDFHighlightRenderer.apply(highlight: highlight, in: pdfView)
         }
     }
 
+    func handleDisplayReady(in pdfView: PDFView) {
+        if self.pdfView == nil {
+            self.pdfView = pdfView
+        }
+
+        guard awaitingInitialDisplay,
+              self.pdfView === pdfView else {
+            return
+        }
+
+        restorePosition(in: pdfView)
+        awaitingInitialDisplay = false
+    }
+
     func handlePageChange(in pdfView: PDFView) {
+        guard !awaitingInitialDisplay else { return }
         guard let page = pdfView.currentPage else { return }
         let pageIndex = document.index(for: page)
         guard isValidPageIndex(pageIndex) else { return }
-        currentPageIndex = pageIndex
-        currentPageNumber = currentPageIndex + 1
-        tocStore.updateCurrentPDFPage(currentPageIndex)
-        canGoBackFromLink = pdfView.canGoBack
-        refreshVisibleAnnotations()
-        persistProgress()
-        onStateChange(self)
+        applyPageState(pageIndex: pageIndex, in: pdfView, shouldPersistProgress: true)
     }
 
     func handleHistoryChange(in pdfView: PDFView) {
@@ -198,9 +209,12 @@ final class PDFReaderStore {
         goToAnchor(anchor, flashSelection: true)
     }
 
-    func refreshVisibleAnnotations() {
+    func refreshVisibleAnnotations(notify: Bool = true) {
         guard let pdfView else {
             notePositions = []
+            if notify {
+                onStateChange(self)
+            }
             return
         }
 
@@ -215,22 +229,40 @@ final class PDFReaderStore {
             let rect = pdfView.convert(selection.bounds(for: page), from: page)
             return AnnotationPosition(id: note.id, x: rect.maxX, y: rect.midY, type: "note")
         }
-        onStateChange(self)
+        if notify {
+            onStateChange(self)
+        }
     }
 
-    func syncNoteAnnotations() {
+    func syncNoteAnnotations(notify: Bool = true) {
         guard let pdfView else {
-            refreshVisibleAnnotations()
+            refreshVisibleAnnotations(notify: notify)
             return
         }
         PDFTextNoteRenderer.sync(notes: textNotesStore.notes, in: pdfView)
-        refreshVisibleAnnotations()
+        refreshVisibleAnnotations(notify: notify)
     }
 
-    private func restorePosition() {
-        let index = PDFAnchor.parse(book.lastCFI ?? "")?.pageIndex
-            ?? max(0, (book.currentPage ?? 1) - 1)
-        goToPage(index)
+    private func restorePosition(in pdfView: PDFView) {
+        goToPage(restoredPageIndex(), in: pdfView, persistProgress: false, alignToTop: true)
+    }
+
+    private func restoredPageIndex() -> Int {
+        let fallbackIndex = max(0, (book.currentPage ?? 1) - 1)
+        let parsedIndex = PDFAnchor.parse(book.lastCFI ?? "")?.pageIndex ?? fallbackIndex
+        return max(0, min(parsedIndex, max(document.pageCount - 1, 0)))
+    }
+
+    private func applyPageState(pageIndex: Int, in pdfView: PDFView, shouldPersistProgress: Bool) {
+        currentPageIndex = pageIndex
+        currentPageNumber = currentPageIndex + 1
+        tocStore.updateCurrentPDFPage(currentPageIndex)
+        canGoBackFromLink = pdfView.canGoBack
+        refreshVisibleAnnotations(notify: false)
+        if shouldPersistProgress {
+            persistProgress()
+        }
+        onStateChange(self)
     }
 
     private func isValidPageIndex(_ index: Int) -> Bool {
@@ -285,13 +317,37 @@ final class PDFReaderStore {
         searchStore.handleResults(results)
     }
 
-    private func goToPage(_ pageIndex: Int) {
-        guard let pdfView,
-              let page = document.page(at: max(0, min(pageIndex, document.pageCount - 1))) else {
+    private func goToPage(
+        _ pageIndex: Int,
+        persistProgress: Bool = true,
+        alignToTop: Bool = false
+    ) {
+        guard let pdfView else { return }
+        goToPage(pageIndex, in: pdfView, persistProgress: persistProgress, alignToTop: alignToTop)
+    }
+
+    private func goToPage(
+        _ pageIndex: Int,
+        in pdfView: PDFView,
+        persistProgress: Bool,
+        alignToTop: Bool
+    ) {
+        guard let page = document.page(at: max(0, min(pageIndex, document.pageCount - 1))) else {
             return
         }
-        pdfView.go(to: page)
-        handlePageChange(in: pdfView)
+
+        if alignToTop {
+            let bounds = page.bounds(for: pdfView.displayBox)
+            let destination = PDFDestination(
+                page: page,
+                at: CGPoint(x: bounds.minX, y: bounds.maxY)
+            )
+            pdfView.go(to: destination)
+        } else {
+            pdfView.go(to: page)
+        }
+
+        applyPageState(pageIndex: document.index(for: page), in: pdfView, shouldPersistProgress: persistProgress)
     }
 
     private func goToAnchor(_ anchor: PDFAnchor, flashSelection: Bool) {
@@ -300,7 +356,7 @@ final class PDFReaderStore {
             return
         }
         pdfView.go(to: page)
-        handlePageChange(in: pdfView)
+        applyPageState(pageIndex: anchor.pageIndex, in: pdfView, shouldPersistProgress: true)
 
         guard flashSelection,
               let range = anchor.range,

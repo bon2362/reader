@@ -190,4 +190,121 @@ struct PDFReaderStoreTests {
         #expect(store.currentPageIndex == 0)
         #expect(store.currentPageNumber == 1)
     }
+
+    @Test func initialRestoreWaitsForDisplayReadyBeforePersistingProgress() async throws {
+        let db = try DatabaseManager.inMemory()
+        let library = LibraryRepository(database: db)
+        let annotations = AnnotationRepository(database: db)
+        let url = try TestPDFFactory.makeTextPDF(
+            pages: ["Page 1", "Page 2", "Page 3"],
+            title: "Three Pages",
+            author: "Tester"
+        )
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let book = Book(
+            title: "Three Pages",
+            author: "Tester",
+            filePath: url.path,
+            lastCFI: "pdf:2",
+            totalPages: 3,
+            currentPage: 3,
+            format: .pdf
+        )
+        try await library.insert(book)
+
+        let store = try PDFReaderStore(
+            book: book,
+            resolvedURL: url,
+            libraryRepository: library,
+            tocStore: TOCStore(),
+            searchStore: SearchStore(),
+            highlightsStore: HighlightsStore(repository: annotations),
+            textNotesStore: TextNotesStore(repository: annotations),
+            stickyNotesStore: StickyNotesStore(repository: annotations),
+            annotationPanelStore: AnnotationPanelStore(
+                highlightsStore: HighlightsStore(repository: annotations),
+                textNotesStore: TextNotesStore(repository: annotations),
+                stickyNotesStore: StickyNotesStore(repository: annotations),
+                tocStore: TOCStore()
+            )
+        )
+        store.start()
+
+        let pdfView = PDFView()
+        store.attachPDFView(pdfView)
+
+        let firstPage = try #require(store.document.page(at: 0))
+        pdfView.go(to: firstPage)
+        store.handlePageChange(in: pdfView)
+
+        try await Task.sleep(nanoseconds: 150_000_000)
+        let untouched = try await library.fetch(id: book.id)
+        #expect(untouched?.lastCFI == "pdf:2")
+        #expect(untouched?.currentPage == 3)
+
+        store.handleDisplayReady(in: pdfView)
+
+        #expect(store.currentPageIndex == 2)
+        #expect(store.currentPageNumber == 3)
+
+        pdfView.go(to: firstPage)
+        store.handlePageChange(in: pdfView)
+
+        #expect(store.currentPageIndex == 0)
+        #expect(store.currentPageNumber == 1)
+
+        try await Task.sleep(nanoseconds: 150_000_000)
+        let reloaded = try await library.fetch(id: book.id)
+        #expect(reloaded?.lastCFI == "pdf:0")
+        #expect(reloaded?.currentPage == 1)
+    }
+
+    @Test func attachDoesNotResetVisibleStateBeforeDisplayReady() async throws {
+        let db = try DatabaseManager.inMemory()
+        let library = LibraryRepository(database: db)
+        let annotations = AnnotationRepository(database: db)
+        let url = try TestPDFFactory.makeTextPDF(
+            pages: ["Page 1", "Page 2", "Page 3"],
+            title: "Three Pages",
+            author: "Tester"
+        )
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let book = Book(
+            title: "Three Pages",
+            author: "Tester",
+            filePath: url.path,
+            lastCFI: "pdf:2",
+            totalPages: 3,
+            currentPage: 3,
+            format: .pdf
+        )
+
+        var observedPages: [Int] = []
+        let store = try PDFReaderStore(
+            book: book,
+            resolvedURL: url,
+            libraryRepository: library,
+            tocStore: TOCStore(),
+            searchStore: SearchStore(),
+            highlightsStore: HighlightsStore(repository: annotations),
+            textNotesStore: TextNotesStore(repository: annotations),
+            stickyNotesStore: StickyNotesStore(repository: annotations),
+            annotationPanelStore: AnnotationPanelStore(
+                highlightsStore: HighlightsStore(repository: annotations),
+                textNotesStore: TextNotesStore(repository: annotations),
+                stickyNotesStore: StickyNotesStore(repository: annotations),
+                tocStore: TOCStore()
+            ),
+            onStateChange: { pdfStore in
+                observedPages.append(pdfStore.currentPageNumber)
+            }
+        )
+
+        store.start()
+        store.attachPDFView(PDFView())
+
+        #expect(observedPages.isEmpty)
+    }
 }

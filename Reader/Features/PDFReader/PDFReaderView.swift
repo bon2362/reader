@@ -33,6 +33,7 @@ private struct PDFReaderContentView: View {
                     NativePDFView(
                         document: store.document,
                         onViewReady: { pdfView in store.attachPDFView(pdfView) },
+                        onDisplayReady: { pdfView in store.handleDisplayReady(in: pdfView) },
                         onPageChanged: { pdfView in store.handlePageChange(in: pdfView) },
                         onSelectionChanged: { pdfView in store.handleSelectionChange(in: pdfView) },
                         onHistoryChanged: { pdfView in store.handleHistoryChange(in: pdfView) },

@@ -40,6 +40,10 @@ struct PDFBookLoaderTests {
 @MainActor
 enum TestPDFFactory {
     static func makeTextPDF(text: String, title: String, author: String? = nil) throws -> URL {
+        try makeTextPDF(pages: [text], title: title, author: author)
+    }
+
+    static func makeTextPDF(pages: [String], title: String, author: String? = nil) throws -> URL {
         let url = temporaryURL(extension: "pdf")
         let data = NSMutableData()
         var mediaBox = CGRect(x: 0, y: 0, width: 612, height: 792)
@@ -49,20 +53,23 @@ enum TestPDFFactory {
             throw CocoaError(.fileWriteUnknown)
         }
 
-        context.beginPDFPage(nil)
-        let graphics = NSGraphicsContext(cgContext: context, flipped: false)
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = graphics
-        NSColor.white.setFill()
-        NSBezierPath(rect: mediaBox).fill()
         let attrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 18),
             .foregroundColor: NSColor.black
         ]
-        NSAttributedString(string: text, attributes: attrs)
-            .draw(in: CGRect(x: 72, y: 640, width: 468, height: 100))
-        NSGraphicsContext.restoreGraphicsState()
-        context.endPDFPage()
+
+        for text in pages {
+            context.beginPDFPage(nil)
+            let graphics = NSGraphicsContext(cgContext: context, flipped: false)
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = graphics
+            NSColor.white.setFill()
+            NSBezierPath(rect: mediaBox).fill()
+            NSAttributedString(string: text, attributes: attrs)
+                .draw(in: CGRect(x: 72, y: 640, width: 468, height: 100))
+            NSGraphicsContext.restoreGraphicsState()
+            context.endPDFPage()
+        }
         context.closePDF()
 
         try data.write(to: url)
