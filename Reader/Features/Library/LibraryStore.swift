@@ -18,7 +18,8 @@ final class LibraryStore {
         isLoading = true
         defer { isLoading = false }
         do {
-            books = try await repository.fetchAll()
+            let fetchedBooks = try await repository.fetchAll()
+            books = await repairBrokenPDFMetadataIfNeeded(in: fetchedBooks)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -55,5 +56,38 @@ final class LibraryStore {
     func resolveBookURL(_ book: Book) -> URL? {
         let url = URL(fileURLWithPath: book.filePath)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    private func repairBrokenPDFMetadataIfNeeded(in fetchedBooks: [Book]) async -> [Book] {
+        var repairedBooks = fetchedBooks
+
+        for index in repairedBooks.indices {
+            let book = repairedBooks[index]
+            guard book.format == .pdf,
+                  PDFBookLoader.needsMetadataRepair(title: book.title, author: book.author),
+                  FileManager.default.fileExists(atPath: book.filePath) else {
+                continue
+            }
+            guard let metadata = try? PDFBookLoader.parseMetadata(from: URL(fileURLWithPath: book.filePath)) else {
+                continue
+            }
+
+            var repaired = book
+            repaired.title = metadata.title
+            repaired.author = metadata.author
+
+            guard repaired.title != book.title || repaired.author != book.author else {
+                continue
+            }
+
+            do {
+                try await repository.update(repaired)
+                repairedBooks[index] = repaired
+            } catch {
+                continue
+            }
+        }
+
+        return repairedBooks
     }
 }

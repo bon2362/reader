@@ -84,4 +84,31 @@ struct LibraryStoreTests {
             try? FileAccess.deleteBookFiles(bookId: id)
         }
     }
+
+    @Test func loadBooksRepairsBrokenPDFMetadata() async throws {
+        let (store, repo) = try makeStore()
+        let url = try TestPDFFactory.makeTextPDF(
+            text: "Hello PDF world",
+            title: "<E7E0EAE0F0E8FF2031393937>",
+            author: "<C2E8F2>",
+            filename: "Закария 1997"
+        )
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let book = Book(
+            title: "<E7E0EAE0F0E8FF2031393937>",
+            author: "<C2E8F2>",
+            filePath: url.path,
+            format: .pdf
+        )
+        try await repo.insert(book)
+
+        await store.loadBooks()
+        let repaired = try await repo.fetch(id: book.id)
+
+        #expect(store.books.first?.title == "Закария 1997")
+        #expect(store.books.first?.author == nil)
+        #expect(repaired?.title == "Закария 1997")
+        #expect(repaired?.author == nil)
+    }
 }

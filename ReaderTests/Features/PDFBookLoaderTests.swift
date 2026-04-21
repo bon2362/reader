@@ -35,16 +35,41 @@ struct PDFBookLoaderTests {
         #expect(metadata.isImageOnly == true)
         #expect(metadata.pageCount == 1)
     }
+
+    @Test func fallsBackToFilenameWhenPDFMetadataIsRawHex() throws {
+        let url = try TestPDFFactory.makeTextPDF(
+            text: "Hello PDF world",
+            title: "<E7E0EAE0F0E8FF2031393937>",
+            author: "<C2E8F2>",
+            filename: "Закария 1997"
+        )
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let metadata = try PDFBookLoader.parseMetadata(from: url)
+
+        #expect(metadata.title == "Закария 1997")
+        #expect(metadata.author == nil)
+    }
 }
 
 @MainActor
 enum TestPDFFactory {
-    static func makeTextPDF(text: String, title: String, author: String? = nil) throws -> URL {
-        try makeTextPDF(pages: [text], title: title, author: author)
+    static func makeTextPDF(
+        text: String,
+        title: String,
+        author: String? = nil,
+        filename: String? = nil
+    ) throws -> URL {
+        try makeTextPDF(pages: [text], title: title, author: author, filename: filename)
     }
 
-    static func makeTextPDF(pages: [String], title: String, author: String? = nil) throws -> URL {
-        let url = temporaryURL(extension: "pdf")
+    static func makeTextPDF(
+        pages: [String],
+        title: String,
+        author: String? = nil,
+        filename: String? = nil
+    ) throws -> URL {
+        let url = temporaryURL(filename: filename, extension: "pdf")
         let data = NSMutableData()
         var mediaBox = CGRect(x: 0, y: 0, width: 612, height: 792)
 
@@ -113,9 +138,10 @@ enum TestPDFFactory {
         return url
     }
 
-    private static func temporaryURL(extension fileExtension: String) -> URL {
-        URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent(UUID().uuidString)
+    private static func temporaryURL(filename: String? = nil, extension fileExtension: String) -> URL {
+        let baseName = filename ?? UUID().uuidString
+        return URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(baseName)
             .appendingPathExtension(fileExtension)
     }
 }

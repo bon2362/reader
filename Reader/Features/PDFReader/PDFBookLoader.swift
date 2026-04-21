@@ -37,8 +37,8 @@ enum PDFBookLoader {
         let rawTitle = attributes[PDFDocumentAttribute.titleAttribute] as? String
         let rawAuthor = attributes[PDFDocumentAttribute.authorAttribute] as? String
 
-        let title = clean(rawTitle) ?? filenameTitle
-        let author = clean(rawAuthor)
+        let title = normalizedTitle(rawTitle, fallbackFilename: filenameTitle)
+        let author = normalizedAuthor(rawAuthor)
         let coverData = document.page(at: 0).flatMap { page in
             pngData(from: page.thumbnail(of: CGSize(width: 400, height: 600), for: .cropBox))
         }
@@ -84,15 +84,37 @@ enum PDFBookLoader {
         (document.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    static func needsMetadataRepair(title: String, author: String?) -> Bool {
+        isRawHexMetadata(title) || isRawHexMetadata(author)
+    }
+
     private static func saveCover(data: Data, bookId: String) throws -> String {
         let destination = try FileAccess.coversDir.appendingPathComponent("\(bookId).png")
         try data.write(to: destination)
         return destination.path
     }
 
+    private static func normalizedTitle(_ value: String?, fallbackFilename: String) -> String {
+        clean(value) ?? fallbackFilename
+    }
+
+    private static func normalizedAuthor(_ value: String?) -> String? {
+        clean(value)
+    }
+
     private static func clean(_ value: String?) -> String? {
         let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed?.isEmpty == false ? trimmed : nil
+        guard let trimmed, !trimmed.isEmpty, !isRawHexMetadata(trimmed) else {
+            return nil
+        }
+        return trimmed
+    }
+
+    private static func isRawHexMetadata(_ value: String?) -> Bool {
+        guard let value else { return false }
+        guard value.count >= 4, value.first == "<", value.last == ">" else { return false }
+        let hex = value.dropFirst().dropLast()
+        return !hex.isEmpty && hex.count.isMultiple(of: 2) && hex.allSatisfy(\.isHexDigit)
     }
 
     private static func pngData(from image: NSImage) -> Data? {
