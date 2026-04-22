@@ -65,6 +65,10 @@ final class LibraryStore {
         selectedBookID = id
     }
 
+    func clearSelection() {
+        selectedBookID = nil
+    }
+
     func resolveBookURL(_ book: Book) -> URL? {
         let url = URL(fileURLWithPath: book.filePath)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
