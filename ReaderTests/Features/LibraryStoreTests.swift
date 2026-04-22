@@ -67,6 +67,14 @@ struct LibraryStoreTests {
         #expect(latest?.currentPage == 8)
     }
 
+    @Test func selectBookStoresSelectedId() throws {
+        let (store, _) = try makeStore()
+
+        store.selectBook(id: "book-123")
+
+        #expect(store.selectedBookID == "book-123")
+    }
+
     @Test func importBookFromMinimalEPUB() async throws {
         let (store, _) = try makeStore()
 
@@ -110,5 +118,28 @@ struct LibraryStoreTests {
         #expect(store.books.first?.author == nil)
         #expect(repaired?.title == "Закария 1997")
         #expect(repaired?.author == nil)
+    }
+
+    @Test func deleteBookClearsSelectionForDeletedBook() async throws {
+        let (store, repo) = try makeStore()
+        let book = Book(title: "X", filePath: "/x")
+        try await repo.insert(book)
+        await store.loadBooks()
+        store.selectBook(id: book.id)
+
+        await store.deleteBook(id: book.id)
+
+        #expect(store.selectedBookID == nil)
+    }
+
+    @Test func loadBooksClearsSelectionWhenSelectedBookMissing() async throws {
+        let (store, repo) = try makeStore()
+        let keptBook = Book(title: "Kept", filePath: "/kept")
+        try await repo.insert(keptBook)
+        store.selectBook(id: "missing-book")
+
+        await store.loadBooks()
+
+        #expect(store.selectedBookID == nil)
     }
 }

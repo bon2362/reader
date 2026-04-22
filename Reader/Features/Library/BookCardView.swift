@@ -1,10 +1,59 @@
 import SwiftUI
 
+private struct BookCoverImageView: View {
+    let coverPath: String?
+    let title: String
+    let format: BookFormat
+
+    @State private var nsImage: NSImage?
+
+    var body: some View {
+        Group {
+            if let nsImage {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                placeholderCover
+            }
+        }
+        .task(id: coverPath) {
+            nsImage = coverPath.flatMap(NSImage.init(contentsOfFile:))
+        }
+    }
+
+    private var placeholderCover: some View {
+        ZStack {
+            Rectangle().fill(
+                LinearGradient(
+                    colors: [.gray.opacity(0.3), .gray.opacity(0.5)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+            )
+            VStack(spacing: 6) {
+                Image(systemName: format == .pdf ? "doc.richtext.fill" : "book.closed.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.white.opacity(0.7))
+                Text(title)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+                    .lineLimit(3)
+            }
+        }
+    }
+}
+
 struct BookCardView: View {
     let book: Book
+    let isSelected: Bool
+    let onSelect: () -> Void
     let onOpen: () -> Void
     let onOpenTest: () -> Void
     let onDelete: () -> Void
+
+    @State private var isHovered = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -12,6 +61,7 @@ struct BookCardView: View {
                 coverImage
                     .frame(width: 140, height: 200)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .compositingGroup()
                     .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
 
                 if book.format == .pdf {
@@ -24,7 +74,7 @@ struct BookCardView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(book.title)
                     .font(.system(size: 13, weight: .medium))
                     .lineLimit(2)
@@ -43,10 +93,25 @@ struct BookCardView: View {
                         .tint(.accentColor)
                         .padding(.top, 4)
                 }
+
+                formatBadge
+                    .padding(.top, 2)
             }
             .frame(width: 140, alignment: .leading)
         }
+        .padding(10)
+        .background(cardBackground)
+        .overlay(cardBorder)
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .shadow(color: shadowColor, radius: 6, x: 0, y: 4)
+        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .onHover { hovered in
+            isHovered = hovered
+        }
+        .onTapGesture { onSelect() }
         .onTapGesture(count: 2) { onOpen() }
+        .animation(.easeInOut(duration: 0.14), value: isHovered)
+        .animation(.easeInOut(duration: 0.14), value: isSelected)
         .contextMenu {
             Button("Открыть") { onOpen() }
             if book.format == .epub {
@@ -59,31 +124,57 @@ struct BookCardView: View {
 
     @ViewBuilder
     private var coverImage: some View {
-        if let path = book.coverPath,
-           let nsImage = NSImage(contentsOfFile: path) {
-            Image(nsImage: nsImage)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-        } else {
-            ZStack {
-                Rectangle().fill(
-                    LinearGradient(
-                        colors: [.gray.opacity(0.3), .gray.opacity(0.5)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                )
-                VStack(spacing: 6) {
-                    Image(systemName: book.format == .pdf ? "doc.richtext.fill" : "book.closed.fill")
-                        .font(.system(size: 32))
-                        .foregroundStyle(.white.opacity(0.7))
-                    Text(book.title)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 8)
-                        .lineLimit(3)
-                }
-            }
+        BookCoverImageView(
+            coverPath: book.coverPath,
+            title: book.title,
+            format: book.format
+        )
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(backgroundFill)
+    }
+
+    private var cardBorder: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(borderColor, lineWidth: isSelected ? 1.5 : 1)
+    }
+
+    private var backgroundFill: Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.12)
         }
+        if isHovered {
+            return Color.primary.opacity(0.05)
+        }
+        return Color.clear
+    }
+
+    private var borderColor: Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.9)
+        }
+        if isHovered {
+            return Color.primary.opacity(0.16)
+        }
+        return Color.primary.opacity(0.08)
+    }
+
+    private var shadowColor: Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.18)
+        }
+        return Color.black.opacity(isHovered ? 0.14 : 0.08)
+    }
+
+    private var formatBadge: some View {
+        Text(book.format.badgeTitle)
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Color.primary.opacity(0.08), in: Capsule())
+            .fixedSize()
     }
 }
