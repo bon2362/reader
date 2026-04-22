@@ -61,12 +61,12 @@ development_status:
   3-4-annotation-panel: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done
   4-1-schema-support-for-exchange-id: done
   4-2-repository-support-for-exchange-lookup: done
   4-3-markdown-exchange-domain-model: done
   4-4-markdown-export-encoder: done
   4-5-library-wide-export-flow: done
   4-6-markdown-import-preview: done
-  4-7-import-apply-with-per-book-transaction: backlog
+  4-7-import-apply-with-per-book-transaction: done
   epic-4-retrospective: optional
