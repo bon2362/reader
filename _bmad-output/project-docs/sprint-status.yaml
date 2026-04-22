@@ -64,7 +64,7 @@ development_status:
   epic-4: in-progress
   4-1-schema-support-for-exchange-id: done
   4-2-repository-support-for-exchange-lookup: done
-  4-3-markdown-exchange-domain-model: backlog
+  4-3-markdown-exchange-domain-model: done
   4-4-markdown-export-encoder: backlog
   4-5-library-wide-export-flow: backlog
   4-6-markdown-import-preview: backlog
