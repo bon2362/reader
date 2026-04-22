@@ -65,7 +65,7 @@ development_status:
   4-1-schema-support-for-exchange-id: done
   4-2-repository-support-for-exchange-lookup: done
   4-3-markdown-exchange-domain-model: done
-  4-4-markdown-export-encoder: backlog
+  4-4-markdown-export-encoder: done
   4-5-library-wide-export-flow: backlog
   4-6-markdown-import-preview: backlog
   4-7-import-apply-with-per-book-transaction: backlog

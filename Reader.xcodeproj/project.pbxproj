@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		05FCF127D0737AA0CA153F39 /* MarkdownAnnotationEncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 553EE5078B2DAA1D4C797A33 /* MarkdownAnnotationEncoder.swift */; };
 		08F9B3E4ABDEE7A03728CF91 /* TextNotePopoverOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A963BE681F032746F83751 /* TextNotePopoverOverlay.swift */; };
 		0BBDA76B7AF44471EEE2452E /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F6B8433A1E46F19C789F83 /* SearchView.swift */; };
 		134A984D7B6DF5C294745369 /* ReaderStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA82A8D43604378B6ADA29F /* ReaderStoreTests.swift */; };
@@ -62,6 +63,7 @@
 		A3F6039CCA4119F0F8605CB7 /* PageIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D9591DB98544136896792BF /* PageIndicator.swift */; };
 		A45B99AD5E3827A333B15E9C /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = C957A4C36FCD46A53BF8892D /* ZIPFoundation */; };
 		A5FA7063FB14036A93C27703 /* AnnotationExchangeModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3BA49B1D57ED3F3CC03DF8 /* AnnotationExchangeModelsTests.swift */; };
+		AC578FC035BBAA1CE3B0B7D4 /* MarkdownAnnotationEncoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A84BADA0C1DEB64A3986E1 /* MarkdownAnnotationEncoderTests.swift */; };
 		AE636E2D188393B5D194CD3A /* StickyNotesOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFAA70F8A14B9D0061036F99 /* StickyNotesOverlayView.swift */; };
 		AF123C5E765B050E22D928DB /* StickyNotesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52E89D5BCF87610F55513081 /* StickyNotesStoreTests.swift */; };
 		AFE330C5619BA830862DCFD2 /* Migration_005.swift in Sources */ = {isa = PBXBuildFile; fileRef = F048F5C6908515CA2A4E7469 /* Migration_005.swift */; };
@@ -128,6 +130,7 @@
 		4F3BA49B1D57ED3F3CC03DF8 /* AnnotationExchangeModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationExchangeModelsTests.swift; sourceTree = "<group>"; };
 		5141289E3C5C2535FCF442A3 /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
 		52E89D5BCF87610F55513081 /* StickyNotesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyNotesStoreTests.swift; sourceTree = "<group>"; };
+		553EE5078B2DAA1D4C797A33 /* MarkdownAnnotationEncoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownAnnotationEncoder.swift; sourceTree = "<group>"; };
 		5728A711EF7A642E349BC316 /* AnnotationPanelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationPanelStore.swift; sourceTree = "<group>"; };
 		58F45CAD380E6673CB201957 /* SearchStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchStore.swift; sourceTree = "<group>"; };
 		5D1D4731F84921D79AA1E988 /* EPUBBridgeProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBBridgeProtocol.swift; sourceTree = "<group>"; };
@@ -154,6 +157,7 @@
 		8F1274DFE38D2882C3247F32 /* Highlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Highlight.swift; sourceTree = "<group>"; };
 		90475D57C7621950C27BE0CB /* MarginOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarginOverlayView.swift; sourceTree = "<group>"; };
 		938C8727D8F40FF56A589F17 /* LibraryRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryRepositoryTests.swift; sourceTree = "<group>"; };
+		96A84BADA0C1DEB64A3986E1 /* MarkdownAnnotationEncoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownAnnotationEncoderTests.swift; sourceTree = "<group>"; };
 		994440E46E25950F04626486 /* TextNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNote.swift; sourceTree = "<group>"; };
 		9D0DC30A0AC53CE26CDDBD6F /* BookFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookFormat.swift; sourceTree = "<group>"; };
 		9D839DDFCC63444B97FAB542 /* Migration_001.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migration_001.swift; sourceTree = "<group>"; };
@@ -310,6 +314,7 @@
 				DE185F0555175DD5DD557516 /* HighlightColorPicker.swift */,
 				83874436AEE81A12B0BE9276 /* HighlightsStore.swift */,
 				90475D57C7621950C27BE0CB /* MarginOverlayView.swift */,
+				553EE5078B2DAA1D4C797A33 /* MarkdownAnnotationEncoder.swift */,
 				6A26B0E662663A9D22121328 /* NoteEditorView.swift */,
 				FFAA70F8A14B9D0061036F99 /* StickyNotesOverlayView.swift */,
 				78BADEEDEC70998312560A24 /* StickyNotesStore.swift */,
@@ -443,6 +448,7 @@
 				D8331B568DE5138C1F480D2F /* EPUBTestFactory.swift */,
 				8CCB8950AC5E861500083538 /* HighlightsStoreTests.swift */,
 				D0F2636E3DEA3B71C83A92EF /* LibraryStoreTests.swift */,
+				96A84BADA0C1DEB64A3986E1 /* MarkdownAnnotationEncoderTests.swift */,
 				BBD95F7A56C927FB8D905A46 /* PDFAnchorTests.swift */,
 				4271CCEC64EB3DE40F2F191B /* PDFBookLoaderTests.swift */,
 				368C591F3FC418BB4E25ADF3 /* PDFReaderStoreTests.swift */,
@@ -582,6 +588,7 @@
 				580A37A826E62E2A4684F2F0 /* LibraryStore.swift in Sources */,
 				2BCDD7B150901E3C08D0B756 /* LibraryView.swift in Sources */,
 				C4E2036F2C154000AAFB8485 /* MarginOverlayView.swift in Sources */,
+				05FCF127D0737AA0CA153F39 /* MarkdownAnnotationEncoder.swift in Sources */,
 				7927797767A6FA41E51DA7E4 /* Migration_001.swift in Sources */,
 				B82D4C47236A610379F3E598 /* Migration_002.swift in Sources */,
 				8FAAAA922F0D9B63D6AE3960 /* Migration_003.swift in Sources */,
@@ -632,6 +639,7 @@
 				8300A26B1E184D4281016F21 /* HighlightsStoreTests.swift in Sources */,
 				F63A2CD0B83904010E02E8C8 /* LibraryRepositoryTests.swift in Sources */,
 				C1AE34A02875CD4D98C960A2 /* LibraryStoreTests.swift in Sources */,
+				AC578FC035BBAA1CE3B0B7D4 /* MarkdownAnnotationEncoderTests.swift in Sources */,
 				ED5F82D72AE9A2F1C985C7D4 /* MockEPUBBridge.swift in Sources */,
 				5F109398FEF05FA5EC169FC2 /* PDFAnchorTests.swift in Sources */,
 				C2AE981213AF05952BBD526D /* PDFBookLoaderTests.swift in Sources */,
