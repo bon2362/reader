@@ -61,6 +61,86 @@ struct AnnotationRepositoryTests {
         #expect(list.isEmpty)
     }
 
+    @Test func fetchHighlightByExchangeIdFindsMatchingRecord() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let highlight = Highlight(
+            bookId: book.id,
+            cfiStart: "start",
+            cfiEnd: "end",
+            color: .yellow,
+            exchangeId: "highlight-exchange"
+        )
+        try await ann.insertHighlight(highlight)
+
+        let fetched = try await ann.fetchHighlight(bookId: book.id, exchangeId: "highlight-exchange")
+
+        #expect(fetched?.id == highlight.id)
+    }
+
+    @Test func fetchHighlightByExchangeIdIgnoresDifferentBook() async throws {
+        let (ann, lib, book) = try await makeSetup()
+        let otherBook = Book(title: "Other", filePath: "/other")
+        try await lib.insert(otherBook)
+        let highlight = Highlight(
+            bookId: otherBook.id,
+            cfiStart: "start",
+            cfiEnd: "end",
+            color: .yellow,
+            exchangeId: "highlight-exchange"
+        )
+        try await ann.insertHighlight(highlight)
+
+        let fetched = try await ann.fetchHighlight(bookId: book.id, exchangeId: "highlight-exchange")
+
+        #expect(fetched == nil)
+    }
+
+    @Test func fetchHighlightByExchangeIdIgnoresDifferentExchangeId() async throws {
+        let (ann, _, book) = try await makeSetup()
+        try await ann.insertHighlight(
+            Highlight(
+                bookId: book.id,
+                cfiStart: "start",
+                cfiEnd: "end",
+                color: .yellow,
+                exchangeId: "highlight-exchange"
+            )
+        )
+
+        let fetched = try await ann.fetchHighlight(bookId: book.id, exchangeId: "other-exchange")
+
+        #expect(fetched == nil)
+    }
+
+    @Test func fetchHighlightByExchangeIdReturnsNilForLegacyRow() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let legacyHighlight = Highlight(
+            bookId: book.id,
+            cfiStart: "start",
+            cfiEnd: "end",
+            color: .yellow,
+            exchangeId: "legacy-placeholder"
+        )
+        try await ann.insertHighlight(legacyHighlight)
+        try await ann.updateHighlight(
+            Highlight(
+                id: legacyHighlight.id,
+                bookId: legacyHighlight.bookId,
+                cfiStart: legacyHighlight.cfiStart,
+                cfiEnd: legacyHighlight.cfiEnd,
+                color: legacyHighlight.color,
+                selectedText: legacyHighlight.selectedText,
+                exchangeId: nil,
+                createdAt: legacyHighlight.createdAt,
+                updatedAt: legacyHighlight.updatedAt
+            )
+        )
+
+        let fetched = try await ann.fetchHighlight(bookId: book.id, exchangeId: "legacy-placeholder")
+
+        #expect(fetched == nil)
+    }
+
     // MARK: - Text Notes
 
     @Test func insertAndFetchTextNote() async throws {
@@ -133,6 +213,81 @@ struct AnnotationRepositoryTests {
         #expect(list.isEmpty)
     }
 
+    @Test func fetchTextNoteByExchangeIdFindsMatchingRecord() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let note = TextNote(
+            bookId: book.id,
+            cfiAnchor: "anchor",
+            body: "body",
+            exchangeId: "text-note-exchange"
+        )
+        try await ann.insertTextNote(note)
+
+        let fetched = try await ann.fetchTextNote(bookId: book.id, exchangeId: "text-note-exchange")
+
+        #expect(fetched?.id == note.id)
+    }
+
+    @Test func fetchTextNoteByExchangeIdIgnoresDifferentBook() async throws {
+        let (ann, lib, book) = try await makeSetup()
+        let otherBook = Book(title: "Other", filePath: "/other")
+        try await lib.insert(otherBook)
+        let note = TextNote(
+            bookId: otherBook.id,
+            cfiAnchor: "anchor",
+            body: "body",
+            exchangeId: "text-note-exchange"
+        )
+        try await ann.insertTextNote(note)
+
+        let fetched = try await ann.fetchTextNote(bookId: book.id, exchangeId: "text-note-exchange")
+
+        #expect(fetched == nil)
+    }
+
+    @Test func fetchTextNoteByExchangeIdIgnoresDifferentExchangeId() async throws {
+        let (ann, _, book) = try await makeSetup()
+        try await ann.insertTextNote(
+            TextNote(
+                bookId: book.id,
+                cfiAnchor: "anchor",
+                body: "body",
+                exchangeId: "text-note-exchange"
+            )
+        )
+
+        let fetched = try await ann.fetchTextNote(bookId: book.id, exchangeId: "other-exchange")
+
+        #expect(fetched == nil)
+    }
+
+    @Test func fetchTextNoteByExchangeIdReturnsNilForLegacyRow() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let legacyNote = TextNote(
+            bookId: book.id,
+            cfiAnchor: "anchor",
+            body: "body",
+            exchangeId: "legacy-text-note"
+        )
+        try await ann.insertTextNote(legacyNote)
+        try await ann.updateTextNote(
+            TextNote(
+                id: legacyNote.id,
+                bookId: legacyNote.bookId,
+                highlightId: legacyNote.highlightId,
+                cfiAnchor: legacyNote.cfiAnchor,
+                body: legacyNote.body,
+                exchangeId: nil,
+                createdAt: legacyNote.createdAt,
+                updatedAt: legacyNote.updatedAt
+            )
+        )
+
+        let fetched = try await ann.fetchTextNote(bookId: book.id, exchangeId: "legacy-text-note")
+
+        #expect(fetched == nil)
+    }
+
     // MARK: - Page Notes
 
     @Test func insertAndFetchPageNote() async throws {
@@ -188,6 +343,81 @@ struct AnnotationRepositoryTests {
 
         let list = try await ann.fetchPageNotes(bookId: book.id)
         #expect(list.isEmpty)
+    }
+
+    @Test func fetchPageNoteByExchangeIdFindsMatchingRecord() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let note = PageNote(
+            bookId: book.id,
+            spineIndex: 1,
+            body: "body",
+            exchangeId: "page-note-exchange"
+        )
+        try await ann.insertPageNote(note)
+
+        let fetched = try await ann.fetchPageNote(bookId: book.id, exchangeId: "page-note-exchange")
+
+        #expect(fetched?.id == note.id)
+    }
+
+    @Test func fetchPageNoteByExchangeIdIgnoresDifferentBook() async throws {
+        let (ann, lib, book) = try await makeSetup()
+        let otherBook = Book(title: "Other", filePath: "/other")
+        try await lib.insert(otherBook)
+        let note = PageNote(
+            bookId: otherBook.id,
+            spineIndex: 1,
+            body: "body",
+            exchangeId: "page-note-exchange"
+        )
+        try await ann.insertPageNote(note)
+
+        let fetched = try await ann.fetchPageNote(bookId: book.id, exchangeId: "page-note-exchange")
+
+        #expect(fetched == nil)
+    }
+
+    @Test func fetchPageNoteByExchangeIdIgnoresDifferentExchangeId() async throws {
+        let (ann, _, book) = try await makeSetup()
+        try await ann.insertPageNote(
+            PageNote(
+                bookId: book.id,
+                spineIndex: 1,
+                body: "body",
+                exchangeId: "page-note-exchange"
+            )
+        )
+
+        let fetched = try await ann.fetchPageNote(bookId: book.id, exchangeId: "other-exchange")
+
+        #expect(fetched == nil)
+    }
+
+    @Test func fetchPageNoteByExchangeIdReturnsNilForLegacyRow() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let legacyNote = PageNote(
+            bookId: book.id,
+            spineIndex: 1,
+            body: "body",
+            exchangeId: "legacy-page-note"
+        )
+        try await ann.insertPageNote(legacyNote)
+        try await ann.updatePageNote(
+            PageNote(
+                id: legacyNote.id,
+                bookId: legacyNote.bookId,
+                spineIndex: legacyNote.spineIndex,
+                pageInChapter: legacyNote.pageInChapter,
+                body: legacyNote.body,
+                exchangeId: nil,
+                createdAt: legacyNote.createdAt,
+                updatedAt: legacyNote.updatedAt
+            )
+        )
+
+        let fetched = try await ann.fetchPageNote(bookId: book.id, exchangeId: "legacy-page-note")
+
+        #expect(fetched == nil)
     }
 
     // MARK: - Cascade
