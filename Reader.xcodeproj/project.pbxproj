@@ -811,6 +811,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_NAME = "slow reader";
 				PRODUCT_BUNDLE_IDENTIFIER = com.koshkin.reader;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
@@ -832,6 +833,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_NAME = "slow reader";
 				PRODUCT_BUNDLE_IDENTIFIER = com.koshkin.reader;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
