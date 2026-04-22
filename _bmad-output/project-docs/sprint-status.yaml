@@ -67,6 +67,6 @@ development_status:
   4-3-markdown-exchange-domain-model: done
   4-4-markdown-export-encoder: done
   4-5-library-wide-export-flow: done
-  4-6-markdown-import-preview: backlog
+  4-6-markdown-import-preview: done
   4-7-import-apply-with-per-book-transaction: backlog
   epic-4-retrospective: optional
