@@ -32,9 +32,11 @@
 		497A59553BC7FD9C8D03C5AC /* EPUBBookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63EE7BF553559A42AA3102B7 /* EPUBBookTests.swift */; };
 		4AB24BD22B4328865FCE3D8C /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 4935FD47BEA4B5783E84BD44 /* GRDB */; };
 		4F6D7ED3FCEBE2EEBFD5DA10 /* AnnotationAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3DB6EFDB469F79A0032B367 /* AnnotationAnchor.swift */; };
+		50AC040BC92C938D7819E0C4 /* AnnotationExchangeIdTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7A7EF0E7F6531C1C3160D8 /* AnnotationExchangeIdTests.swift */; };
 		53AEC719DC6CD43E0852A281 /* AnnotationPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD51F3F57B4C2825C43C9910 /* AnnotationPanelView.swift */; };
 		580A37A826E62E2A4684F2F0 /* LibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC1485E6EEA2F336CF12D2E4 /* LibraryStore.swift */; };
 		5F109398FEF05FA5EC169FC2 /* PDFAnchorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD95F7A56C927FB8D905A46 /* PDFAnchorTests.swift */; };
+		5FEA086D97D4DB4C755D5AF5 /* Migration_006.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13B7E8759EA71376DF407DF /* Migration_006.swift */; };
 		605DB98CAD08D5B8D7A80C5C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 263710E159AE7DA5A20AF582 /* AppDelegate.swift */; };
 		60A49E25889DDD186EE4BE0A /* BridgeTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAFBAF0642BDFF843D5A322D /* BridgeTypes.swift */; };
 		6E6A6F0B828EE8DBE5C084E0 /* HoverButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9FA691E8D9949610457025 /* HoverButtonStyle.swift */; };
@@ -151,6 +153,7 @@
 		994440E46E25950F04626486 /* TextNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNote.swift; sourceTree = "<group>"; };
 		9D0DC30A0AC53CE26CDDBD6F /* BookFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookFormat.swift; sourceTree = "<group>"; };
 		9D839DDFCC63444B97FAB542 /* Migration_001.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migration_001.swift; sourceTree = "<group>"; };
+		9E7A7EF0E7F6531C1C3160D8 /* AnnotationExchangeIdTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationExchangeIdTests.swift; sourceTree = "<group>"; };
 		A01FD7A8708E9BD7C3B31B8E /* AnnotationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationRepository.swift; sourceTree = "<group>"; };
 		A6A8ED079C48EE821AAF3F24 /* AnnotationRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationRepositoryTests.swift; sourceTree = "<group>"; };
 		AE4CE8D1782AC130A8458DD1 /* ReaderToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderToolbar.swift; sourceTree = "<group>"; };
@@ -176,6 +179,7 @@
 		EC1485E6EEA2F336CF12D2E4 /* LibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStore.swift; sourceTree = "<group>"; };
 		EC78EBA5D4D02903E4BD248A /* ReaderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderApp.swift; sourceTree = "<group>"; };
 		F048F5C6908515CA2A4E7469 /* Migration_005.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migration_005.swift; sourceTree = "<group>"; };
+		F13B7E8759EA71376DF407DF /* Migration_006.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migration_006.swift; sourceTree = "<group>"; };
 		F41141379422515DF86E0A1A /* PDFAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFAnchor.swift; sourceTree = "<group>"; };
 		F6FFD7F892C96C42E5BFC59A /* PageNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageNote.swift; sourceTree = "<group>"; };
 		FADF34C3BC64D4841605BC39 /* Migration_002.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migration_002.swift; sourceTree = "<group>"; };
@@ -217,6 +221,7 @@
 		16DDB90F4ADC730A6AADAB46 /* Database */ = {
 			isa = PBXGroup;
 			children = (
+				9E7A7EF0E7F6531C1C3160D8 /* AnnotationExchangeIdTests.swift */,
 				A6A8ED079C48EE821AAF3F24 /* AnnotationRepositoryTests.swift */,
 				938C8727D8F40FF56A589F17 /* LibraryRepositoryTests.swift */,
 			);
@@ -231,6 +236,7 @@
 				CA362BA33BBCA2661796FDBD /* Migration_003.swift */,
 				38AE4E1727995E7310BE1C21 /* Migration_004.swift */,
 				F048F5C6908515CA2A4E7469 /* Migration_005.swift */,
+				F13B7E8759EA71376DF407DF /* Migration_006.swift */,
 			);
 			path = Migrations;
 			sourceTree = "<group>";
@@ -574,6 +580,7 @@
 				8FAAAA922F0D9B63D6AE3960 /* Migration_003.swift in Sources */,
 				D737DB3898D9DA6E55A2B2C6 /* Migration_004.swift in Sources */,
 				AFE330C5619BA830862DCFD2 /* Migration_005.swift in Sources */,
+				5FEA086D97D4DB4C755D5AF5 /* Migration_006.swift in Sources */,
 				C0110287ABDB22E5FDA68D20 /* NativeEPUBBridge.swift in Sources */,
 				E3B077E66A84B0350DBB3AA6 /* NativeEPUBWebView.swift in Sources */,
 				77AB6F7EA4CF13D325A70A54 /* NativePDFView.swift in Sources */,
@@ -608,6 +615,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				50AC040BC92C938D7819E0C4 /* AnnotationExchangeIdTests.swift in Sources */,
 				FA01E7D737BA3F06FDA4C03A /* AnnotationPanelStoreTests.swift in Sources */,
 				8843606CA49C3BDC29CC9FCB /* AnnotationRepositoryTests.swift in Sources */,
 				2FEBDB8C7DC3E1C626C5811E /* BookImporterTests.swift in Sources */,
@@ -652,9 +660,10 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.koshkin.ReaderTests;
+				PRODUCT_MODULE_NAME = ReaderTests;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Reader.app/Contents/MacOS/Reader";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/slow reader.app/Contents/MacOS/slow reader";
 			};
 			name = Debug;
 		};
@@ -671,9 +680,10 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.koshkin.ReaderTests;
+				PRODUCT_MODULE_NAME = ReaderTests;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Reader.app/Contents/MacOS/Reader";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/slow reader.app/Contents/MacOS/slow reader";
 			};
 			name = Release;
 		};
@@ -811,8 +821,9 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				PRODUCT_NAME = "slow reader";
 				PRODUCT_BUNDLE_IDENTIFIER = com.koshkin.reader;
+				PRODUCT_MODULE_NAME = Reader;
+				PRODUCT_NAME = "slow reader";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
 			};
@@ -833,8 +844,9 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				PRODUCT_NAME = "slow reader";
 				PRODUCT_BUNDLE_IDENTIFIER = com.koshkin.reader;
+				PRODUCT_MODULE_NAME = Reader;
+				PRODUCT_NAME = "slow reader";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
 			};

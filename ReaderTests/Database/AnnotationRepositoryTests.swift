@@ -38,6 +38,19 @@ struct AnnotationRepositoryTests {
         #expect(list[0].color == .red)
     }
 
+    @Test func updateHighlightPreservesExchangeId() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let original = Highlight(bookId: book.id, cfiStart: "s", cfiEnd: "e", color: .yellow)
+        try await ann.insertHighlight(original)
+
+        var updated = original
+        updated.color = .red
+        try await ann.updateHighlight(updated)
+
+        let list = try await ann.fetchHighlights(bookId: book.id)
+        #expect(list[0].exchangeId == original.exchangeId)
+    }
+
     @Test func deleteHighlight() async throws {
         let (ann, _, book) = try await makeSetup()
         let h = Highlight(bookId: book.id, cfiStart: "s", cfiEnd: "e", color: .green)
@@ -97,6 +110,19 @@ struct AnnotationRepositoryTests {
         #expect(list[0].body == "new")
     }
 
+    @Test func updateTextNotePreservesExchangeId() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let original = TextNote(bookId: book.id, cfiAnchor: "cfi", body: "old")
+        try await ann.insertTextNote(original)
+
+        var updated = original
+        updated.body = "new"
+        try await ann.updateTextNote(updated)
+
+        let list = try await ann.fetchTextNotes(bookId: book.id)
+        #expect(list[0].exchangeId == original.exchangeId)
+    }
+
     @Test func deleteTextNote() async throws {
         let (ann, _, book) = try await makeSetup()
         let n = TextNote(bookId: book.id, cfiAnchor: "cfi", body: "x")
@@ -139,6 +165,19 @@ struct AnnotationRepositoryTests {
 
         let list = try await ann.fetchPageNotes(bookId: book.id)
         #expect(list[0].body == "new")
+    }
+
+    @Test func updatePageNotePreservesExchangeId() async throws {
+        let (ann, _, book) = try await makeSetup()
+        let original = PageNote(bookId: book.id, spineIndex: 0, body: "old")
+        try await ann.insertPageNote(original)
+
+        var updated = original
+        updated.body = "new"
+        try await ann.updatePageNote(updated)
+
+        let list = try await ann.fetchPageNotes(bookId: book.id)
+        #expect(list[0].exchangeId == original.exchangeId)
     }
 
     @Test func deletePageNote() async throws {

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-18
-last_updated: 2026-04-21
+last_updated: 2026-04-22
 project: Reader App
 project_key: NOKEY
 tracking_system: file-system
@@ -60,3 +60,13 @@ development_status:
   3-3-sticky-notes-type-b: done
   3-4-annotation-panel: done
   epic-3-retrospective: optional
+
+  epic-4: in-progress
+  4-1-schema-support-for-exchange-id: done
+  4-2-repository-support-for-exchange-lookup: backlog
+  4-3-markdown-exchange-domain-model: backlog
+  4-4-markdown-export-encoder: backlog
+  4-5-library-wide-export-flow: backlog
+  4-6-markdown-import-preview: backlog
+  4-7-import-apply-with-per-book-transaction: backlog
+  epic-4-retrospective: optional

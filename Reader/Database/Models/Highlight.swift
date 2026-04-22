@@ -16,6 +16,7 @@ struct Highlight: Identifiable, Codable, Hashable {
     var cfiEnd: String
     var color: HighlightColor
     var selectedText: String
+    var exchangeId: String?
     var createdAt: Date
     var updatedAt: Date
 
@@ -26,6 +27,7 @@ struct Highlight: Identifiable, Codable, Hashable {
         cfiEnd: String,
         color: HighlightColor,
         selectedText: String = "",
+        exchangeId: String? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -35,6 +37,7 @@ struct Highlight: Identifiable, Codable, Hashable {
         self.cfiEnd = cfiEnd
         self.color = color
         self.selectedText = selectedText
+        self.exchangeId = exchangeId ?? UUID().uuidString
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -50,6 +53,7 @@ extension Highlight: FetchableRecord, PersistableRecord {
         static let cfiEnd    = Column(CodingKeys.cfiEnd)
         static let color     = Column(CodingKeys.color)
         static let selectedText = Column(CodingKeys.selectedText)
+        static let exchangeId = Column(CodingKeys.exchangeId)
         static let createdAt = Column(CodingKeys.createdAt)
         static let updatedAt = Column(CodingKeys.updatedAt)
     }
@@ -61,6 +65,7 @@ extension Highlight: FetchableRecord, PersistableRecord {
         case cfiEnd    = "cfi_end"
         case color
         case selectedText = "selected_text"
+        case exchangeId = "exchange_id"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
