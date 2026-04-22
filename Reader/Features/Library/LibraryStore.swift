@@ -7,6 +7,7 @@ final class LibraryStore {
     var books: [Book] = []
     var isLoading: Bool = false
     var errorMessage: String?
+    var selectedBookID: String?
 
     private let repository: LibraryRepositoryProtocol
 
@@ -20,6 +21,9 @@ final class LibraryStore {
         do {
             let fetchedBooks = try await repository.fetchAll()
             books = await repairBrokenPDFMetadataIfNeeded(in: fetchedBooks)
+            if let selectedBookID, books.contains(where: { $0.id == selectedBookID }) == false {
+                self.selectedBookID = nil
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -29,6 +33,7 @@ final class LibraryStore {
         do {
             let book = try await BookImporter.importBook(from: url, using: repository)
             books.insert(book, at: 0)
+            selectedBookID = book.id
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -48,9 +53,16 @@ final class LibraryStore {
             try await repository.delete(id: id)
             try FileAccess.deleteBookFiles(bookId: id)
             books.removeAll { $0.id == id }
+            if selectedBookID == id {
+                selectedBookID = nil
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func selectBook(id: String) {
+        selectedBookID = id
     }
 
     func resolveBookURL(_ book: Book) -> URL? {

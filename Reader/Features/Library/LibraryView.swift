@@ -20,7 +20,12 @@ struct LibraryView: View {
                         ForEach(store.books) { book in
                             BookCardView(
                                 book: book,
-                                onOpen: { openBook(book) },
+                                isSelected: store.selectedBookID == book.id,
+                                onSelect: { store.selectBook(id: book.id) },
+                                onOpen: {
+                                    store.selectBook(id: book.id)
+                                    openBook(book)
+                                },
                                 onOpenTest: { openBookTest(book) },
                                 onDelete: { Task { await store.deleteBook(id: book.id) } }
                             )
