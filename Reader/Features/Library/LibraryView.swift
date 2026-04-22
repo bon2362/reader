@@ -7,44 +7,49 @@ struct LibraryView: View {
     let onOpenTest: (Book, URL) -> Void
 
     @State private var showImporter = false
+    @State private var pendingDeletionBook: Book?
 
     private let columns = [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 20)]
 
     var body: some View {
-        Group {
-            if store.books.isEmpty && !store.isLoading {
-                emptyState
-            } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 24) {
-                        ForEach(store.books) { book in
-                            BookCardView(
-                                book: book,
-                                isSelected: store.selectedBookID == book.id,
-                                onSelect: { store.selectBook(id: book.id) },
-                                onOpen: {
-                                    store.selectBook(id: book.id)
-                                    openBook(book)
-                                },
-                                onOpenTest: { openBookTest(book) },
-                                onDelete: { Task { await store.deleteBook(id: book.id) } }
-                            )
-                        }
-                    }
-                    .padding(24)
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 24) {
+                AddBookCardView {
+                    showImporter = true
+                }
+
+                ForEach(store.books) { book in
+                    BookCardView(
+                        book: book,
+                        isSelected: store.selectedBookID == book.id,
+                        onSelect: { store.selectBook(id: book.id) },
+                        onOpen: {
+                            store.selectBook(id: book.id)
+                            openBook(book)
+                        },
+                        onOpenTest: { openBookTest(book) },
+                        onDelete: { requestDeletion(of: book) }
+                    )
                 }
             }
+            .padding(24)
+
+            if store.books.isEmpty && !store.isLoading {
+                ContentUnavailableView(
+                    "Нет книг",
+                    systemImage: "books.vertical",
+                    description: Text("Первая плитка в библиотеке добавляет EPUB и PDF файлы.")
+                )
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            store.clearSelection()
         }
         .navigationTitle("Библиотека")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showImporter = true
-                } label: {
-                    Label("Импорт", systemImage: "plus")
-                }
-            }
-        }
+        .onDeleteCommand(perform: requestDeletionOfSelectedBook)
         .fileImporter(
             isPresented: $showImporter,
             allowedContentTypes: [
@@ -54,6 +59,24 @@ struct LibraryView: View {
             allowsMultipleSelection: false
         ) { result in
             handleImport(result)
+        }
+        .confirmationDialog(
+            "Удалить книгу?",
+            isPresented: .init(
+                get: { pendingDeletionBook != nil },
+                set: { if !$0 { pendingDeletionBook = nil } }
+            ),
+            presenting: pendingDeletionBook
+        ) { book in
+            Button("Удалить", role: .destructive) {
+                pendingDeletionBook = nil
+                Task { await store.deleteBook(id: book.id) }
+            }
+            Button("Отмена", role: .cancel) {
+                pendingDeletionBook = nil
+            }
+        } message: { book in
+            Text("Книга \"\(book.title)\" будет удалена из библиотеки. Приложение также удалит свою локальную копию файла, но исходный файл на вашем диске останется на месте.")
         }
         .alert(
             "Ошибка",
@@ -69,17 +92,6 @@ struct LibraryView: View {
         .task { await store.loadBooks() }
     }
 
-    private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Нет книг", systemImage: "books.vertical")
-        } description: {
-            Text("Нажмите + чтобы добавить EPUB или PDF файл")
-        } actions: {
-            Button("Импорт EPUB/PDF") { showImporter = true }
-                .buttonStyle(.borderedProminent)
-        }
-    }
-
     private func handleImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
@@ -92,6 +104,19 @@ struct LibraryView: View {
         case .failure(let error):
             store.errorMessage = error.localizedDescription
         }
+    }
+
+    private func requestDeletion(of book: Book) {
+        store.selectBook(id: book.id)
+        pendingDeletionBook = book
+    }
+
+    private func requestDeletionOfSelectedBook() {
+        guard let selectedBookID = store.selectedBookID,
+              let selectedBook = store.books.first(where: { $0.id == selectedBookID }) else {
+            return
+        }
+        pendingDeletionBook = selectedBook
     }
 
     private func openBook(_ book: Book) {
