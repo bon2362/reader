@@ -11,6 +11,7 @@
 		08F9B3E4ABDEE7A03728CF91 /* TextNotePopoverOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A963BE681F032746F83751 /* TextNotePopoverOverlay.swift */; };
 		0BBDA76B7AF44471EEE2452E /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F6B8433A1E46F19C789F83 /* SearchView.swift */; };
 		134A984D7B6DF5C294745369 /* ReaderStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA82A8D43604378B6ADA29F /* ReaderStoreTests.swift */; };
+		136D7D52A28C12969431AB53 /* AnnotationExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8829E24BCB67FB1E938881 /* AnnotationExportService.swift */; };
 		13DD3E8168114C4C5B2F1D37 /* Highlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1274DFE38D2882C3247F32 /* Highlight.swift */; };
 		17170E06DDF28C7BD180EB68 /* PDFMarkupGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35B4A85777D72E87D3650465 /* PDFMarkupGeometry.swift */; };
 		1AA103B56EE65BB5D2FF89DD /* ReaderToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4CE8D1782AC130A8458DD1 /* ReaderToolbar.swift */; };
@@ -89,6 +90,7 @@
 		E3B077E66A84B0350DBB3AA6 /* NativeEPUBWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB6F9F4FCA17848D1D9788B /* NativeEPUBWebView.swift */; };
 		E5E3914B903E457361B75F29 /* NoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A26B0E662663A9D22121328 /* NoteEditorView.swift */; };
 		EA5D716222517E4971EEBF32 /* TOCEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821E5269A52D7E4B1682ED3A /* TOCEntry.swift */; };
+		EB9FC26CA7A47CD05319857B /* AnnotationExportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6FC3EF2B6FA205EFD6C61CA /* AnnotationExportServiceTests.swift */; };
 		ED5F82D72AE9A2F1C985C7D4 /* MockEPUBBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08AF65CEE0F779CB24EB601C /* MockEPUBBridge.swift */; };
 		F63A2CD0B83904010E02E8C8 /* LibraryRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 938C8727D8F40FF56A589F17 /* LibraryRepositoryTests.swift */; };
 		F9BA9C63359E63394D244BF1 /* PDFReaderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8571CCDB6C9B1D98AA266D9F /* PDFReaderStore.swift */; };
@@ -134,6 +136,7 @@
 		5728A711EF7A642E349BC316 /* AnnotationPanelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationPanelStore.swift; sourceTree = "<group>"; };
 		58F45CAD380E6673CB201957 /* SearchStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchStore.swift; sourceTree = "<group>"; };
 		5D1D4731F84921D79AA1E988 /* EPUBBridgeProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBBridgeProtocol.swift; sourceTree = "<group>"; };
+		5E8829E24BCB67FB1E938881 /* AnnotationExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationExportService.swift; sourceTree = "<group>"; };
 		5F677ADC9A9F7A30A32CF74A /* TOCStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOCStoreTests.swift; sourceTree = "<group>"; };
 		63EE7BF553559A42AA3102B7 /* EPUBBookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBBookTests.swift; sourceTree = "<group>"; };
 		662FE7E7AEC63BE9FE536884 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
@@ -169,6 +172,7 @@
 		BBD95F7A56C927FB8D905A46 /* PDFAnchorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFAnchorTests.swift; sourceTree = "<group>"; };
 		BC0A60ADA858F9251673AC53 /* BookImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookImporter.swift; sourceTree = "<group>"; };
 		BDCD47CC3E6EA7883C97A95F /* ReaderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderStore.swift; sourceTree = "<group>"; };
+		C6FC3EF2B6FA205EFD6C61CA /* AnnotationExportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationExportServiceTests.swift; sourceTree = "<group>"; };
 		CA362BA33BBCA2661796FDBD /* Migration_003.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migration_003.swift; sourceTree = "<group>"; };
 		CD51F3F57B4C2825C43C9910 /* AnnotationPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationPanelView.swift; sourceTree = "<group>"; };
 		D0E70E3921C8FFE16F77CE06 /* PDFBookLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFBookLoader.swift; sourceTree = "<group>"; };
@@ -307,6 +311,7 @@
 			isa = PBXGroup;
 			children = (
 				2173A405C32513C159915FAE /* AnnotationExchangeModels.swift */,
+				5E8829E24BCB67FB1E938881 /* AnnotationExportService.swift */,
 				843BAC312A75DF302C35E6D9 /* AnnotationListItem.swift */,
 				5728A711EF7A642E349BC316 /* AnnotationPanelStore.swift */,
 				CD51F3F57B4C2825C43C9910 /* AnnotationPanelView.swift */,
@@ -442,6 +447,7 @@
 			isa = PBXGroup;
 			children = (
 				4F3BA49B1D57ED3F3CC03DF8 /* AnnotationExchangeModelsTests.swift */,
+				C6FC3EF2B6FA205EFD6C61CA /* AnnotationExportServiceTests.swift */,
 				D681B1E40DBB696EAEC266F5 /* AnnotationPanelStoreTests.swift */,
 				16B0B19D9B725EE4EE3F0085 /* BookImporterTests.swift */,
 				63EE7BF553559A42AA3102B7 /* EPUBBookTests.swift */,
@@ -562,6 +568,7 @@
 			files = (
 				4F6D7ED3FCEBE2EEBFD5DA10 /* AnnotationAnchor.swift in Sources */,
 				32F7502AEBCCEDFEFE62FAC9 /* AnnotationExchangeModels.swift in Sources */,
+				136D7D52A28C12969431AB53 /* AnnotationExportService.swift in Sources */,
 				DB9EEF4846D0D30DCD50947B /* AnnotationListItem.swift in Sources */,
 				DAE0E2933BB7DC207C7ADDE2 /* AnnotationPanelStore.swift in Sources */,
 				53AEC719DC6CD43E0852A281 /* AnnotationPanelView.swift in Sources */,
@@ -631,6 +638,7 @@
 			files = (
 				50AC040BC92C938D7819E0C4 /* AnnotationExchangeIdTests.swift in Sources */,
 				A5FA7063FB14036A93C27703 /* AnnotationExchangeModelsTests.swift in Sources */,
+				EB9FC26CA7A47CD05319857B /* AnnotationExportServiceTests.swift in Sources */,
 				FA01E7D737BA3F06FDA4C03A /* AnnotationPanelStoreTests.swift in Sources */,
 				8843606CA49C3BDC29CC9FCB /* AnnotationRepositoryTests.swift in Sources */,
 				2FEBDB8C7DC3E1C626C5811E /* BookImporterTests.swift in Sources */,
