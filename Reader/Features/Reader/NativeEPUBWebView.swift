@@ -45,6 +45,11 @@ struct NativeEPUBWebView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {}
 
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        coordinator.bridge?.tearDown()
+        coordinator.bridge = nil
+    }
+
     private static func makeWebView() -> WKWebView {
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")

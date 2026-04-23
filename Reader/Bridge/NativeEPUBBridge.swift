@@ -60,7 +60,7 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
         )
     }
 
-    deinit {
+    func tearDown() {
         revealTask?.cancel()
         webView?.configuration.userContentController.removeScriptMessageHandler(forName: "native")
         preflightView?.configuration.userContentController.removeScriptMessageHandler(forName: "native")

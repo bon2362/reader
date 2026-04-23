@@ -198,7 +198,7 @@ enum BookImporter {
     }
 
     private static func normalizeZipPath(_ path: String) -> String {
-        var components = path.components(separatedBy: "/")
+        let components = path.components(separatedBy: "/")
         var normalized: [String] = []
         for c in components {
             if c == ".." { if !normalized.isEmpty { normalized.removeLast() } }
