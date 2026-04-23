@@ -272,6 +272,7 @@ struct AnnotationImportService {
 
             existing.highlightId = nil
             existing.cfiAnchor = anchorValue
+            existing.selectedText = item.selectedText
             existing.body = item.body ?? ""
             existing.exchangeId = item.exchangeId
             existing.createdAt = item.createdAt
@@ -284,6 +285,7 @@ struct AnnotationImportService {
             bookId: book.id,
             highlightId: nil,
             cfiAnchor: anchorValue,
+            selectedText: item.selectedText,
             body: item.body ?? "",
             exchangeId: item.exchangeId,
             createdAt: item.createdAt,

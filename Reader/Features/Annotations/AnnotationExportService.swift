@@ -24,6 +24,7 @@ struct AnnotationExportService: Sendable {
     private let libraryRepository: LibraryRepositoryProtocol
     private let annotationRepository: AnnotationRepositoryProtocol
     private let encoder: MarkdownAnnotationEncoder
+    private let locationFormatter = AnnotationLocationFormatter()
 
     init(
         libraryRepository: LibraryRepositoryProtocol,
@@ -156,7 +157,7 @@ struct AnnotationExportService: Sendable {
             ),
             items: highlights.map(makeHighlightItem)
                 + textNotes.map { makeTextNoteItem($0, highlightsById: highlightsById) }
-                + stickyNotes.map { makeStickyNoteItem($0, format: book.format) }
+                + stickyNotes.map { makeStickyNoteItem($0, book: book) }
         )
     }
 
@@ -189,12 +190,12 @@ struct AnnotationExportService: Sendable {
             ),
             createdAt: note.createdAt,
             updatedAt: note.updatedAt,
-            selectedText: note.highlightId.flatMap { highlightsById[$0]?.selectedText },
+            selectedText: note.selectedText ?? note.highlightId.flatMap { highlightsById[$0]?.selectedText },
             body: note.body
         )
     }
 
-    private func makeStickyNoteItem(_ note: PageNote, format: BookFormat) -> AnnotationExchangeItem {
+    private func makeStickyNoteItem(_ note: PageNote, book: Book) -> AnnotationExchangeItem {
         AnnotationExchangeItem(
             exchangeId: note.exchangeId ?? note.id,
             type: .stickyNote,
@@ -205,17 +206,12 @@ struct AnnotationExportService: Sendable {
             createdAt: note.createdAt,
             updatedAt: note.updatedAt,
             body: note.body,
-            pageLabel: pageLabel(for: note, format: format)
+            pageLabel: locationFormatter.exportLabel(
+                for: note,
+                format: book.format,
+                chapterPageCounts: book.chapterPageCounts
+            )
         )
-    }
-
-    private func pageLabel(for note: PageNote, format: BookFormat) -> String {
-        switch format {
-        case .pdf:
-            return "Page \(note.spineIndex + 1)"
-        case .epub:
-            return "Chapter \(note.spineIndex + 1) · Page \(note.pageInChapter + 1)"
-        }
     }
 
     private func contentHash(for book: Book) throws -> String {

@@ -4,6 +4,8 @@ struct AnnotationPanelView: View {
     @Bindable var store: AnnotationPanelStore
     let onSelect: (AnnotationListItem) -> Void
     let onClose: () -> Void
+    let onExport: () -> Void
+    let isExporting: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,6 +22,14 @@ struct AnnotationPanelView: View {
             Text("Аннотации")
                 .font(.system(size: 13, weight: .semibold))
             Spacer()
+            Button(action: onExport) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(isExporting ? "Экспорт заметок..." : "Экспорт заметок")
+            .disabled(isExporting)
             Button(action: onClose) {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .medium))

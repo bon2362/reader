@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ReaderView: View {
@@ -48,7 +49,9 @@ struct ReaderView: View {
                             store.navigateToAnnotation(item)
                             store.annotationPanelStore.hide()
                         },
-                        onClose: { store.annotationPanelStore.hide() }
+                        onClose: { store.annotationPanelStore.hide() },
+                        onExport: chooseExportDirectoryAndStart,
+                        isExporting: store.isExportingAnnotations
                     )
                     .frame(width: 320)
                     .background(.ultraThinMaterial)
@@ -184,6 +187,17 @@ struct ReaderView: View {
         } message: {
             Text(store.errorMessage ?? "")
         }
+        .alert(
+            store.exportFeedback?.title ?? "Экспорт",
+            isPresented: .init(
+                get: { store.exportFeedback != nil },
+                set: { if !$0 { store.exportFeedback = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { store.exportFeedback = nil }
+        } message: {
+            Text(store.exportFeedback?.message ?? "")
+        }
     }
 
     private var epubReaderPane: some View {
@@ -212,6 +226,9 @@ struct ReaderView: View {
                             pageInChapter: store.currentPageInChapter
                         ),
                         expandedId: store.stickyNotesStore.expandedId,
+                        locationLabel: { note in
+                            store.stickyNoteLocationLabel(for: note)
+                        },
                         onToggle: { id in store.stickyNotesStore.toggleExpand(id: id) },
                         onUpdate: { id, body in Task { await store.stickyNotesStore.updateBody(id: id, body: body) } },
                         onDelete: { id in Task { await store.stickyNotesStore.delete(id: id) } }
@@ -284,9 +301,35 @@ struct ReaderView: View {
             FloatingIconButton(systemName: "bookmark", help: "Аннотации") {
                 store.annotationPanelStore.toggleVisibility()
             }
+            FloatingIconButton(
+                systemName: store.isExportingAnnotations ? "arrow.up.circle.fill" : "square.and.arrow.up",
+                help: store.isExportingAnnotations ? "Экспорт заметок..." : "Экспорт заметок"
+            ) {
+                chooseExportDirectoryAndStart()
+            }
+            .disabled(store.isExportingAnnotations)
             FloatingIconButton(systemName: "note.text.badge.plus", help: "Sticky-заметка (⌘⇧N)") {
                 store.addStickyNoteForCurrentPage()
             }
+        }
+    }
+
+    private func chooseExportDirectoryAndStart() {
+        guard !store.isExportingAnnotations else { return }
+
+        let panel = NSOpenPanel()
+        panel.title = "Выберите папку для экспорта заметок"
+        panel.message = "Приложение создаст markdown-файлы для книг с заметками."
+        panel.prompt = "Экспортировать"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+
+        guard panel.runModal() == .OK, let directoryURL = panel.url else { return }
+
+        Task {
+            await store.exportAnnotations(to: directoryURL)
         }
     }
 

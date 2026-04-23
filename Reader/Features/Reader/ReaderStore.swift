@@ -1,6 +1,11 @@
 import Foundation
 import Observation
 
+struct AnnotationExportFeedback: Equatable {
+    var title: String
+    var message: String
+}
+
 @MainActor
 @Observable
 final class ReaderStore {
@@ -19,6 +24,8 @@ final class ReaderStore {
     var errorMessage: String?
     var canGoBackFromLink: Bool = false
     var pdfStore: PDFReaderStore?
+    var isExportingAnnotations: Bool = false
+    var exportFeedback: AnnotationExportFeedback?
 
     let tocStore: TOCStore
     let searchStore: SearchStore
@@ -31,7 +38,9 @@ final class ReaderStore {
 
     private var bridge: EPUBBridgeProtocol?
     private let libraryRepository: LibraryRepositoryProtocol
+    private let annotationRepository: AnnotationRepositoryProtocol
     private var hideToolbarTask: Task<Void, Never>?
+    private let annotationLocationFormatter = AnnotationLocationFormatter()
 
     // MARK: - Init
 
@@ -46,6 +55,7 @@ final class ReaderStore {
         stickyNotesStore: StickyNotesStore? = nil
     ) {
         self.libraryRepository = libraryRepository
+        self.annotationRepository = annotationRepository
         self.tocStore = tocStore
         self.searchStore = searchStore
         self.highlightsStore = highlightsStore ?? HighlightsStore(repository: annotationRepository)
@@ -196,6 +206,43 @@ final class ReaderStore {
         bridge?.goBackFromLink()
     }
 
+    func exportAnnotations(to directoryURL: URL) async {
+        isExportingAnnotations = true
+        defer { isExportingAnnotations = false }
+
+        let service = AnnotationExportService(
+            libraryRepository: libraryRepository,
+            annotationRepository: annotationRepository
+        )
+        let summary = await service.exportAll(to: directoryURL)
+
+        if summary.exportedCount == 0, summary.failedCount > 0 {
+            let failedTitles = summary.results.compactMap { result -> String? in
+                if case .failed = result.status {
+                    return result.title
+                }
+                return nil
+            }
+            errorMessage = failedTitles.isEmpty
+                ? "Не удалось экспортировать заметки."
+                : "Не удалось экспортировать заметки: \(failedTitles.joined(separator: ", "))"
+            return
+        }
+
+        exportFeedback = AnnotationExportFeedback(
+            title: "Экспорт завершён",
+            message: makeExportFeedbackMessage(summary: summary, directoryURL: directoryURL)
+        )
+    }
+
+    func stickyNoteLocationLabel(for note: PageNote) -> String {
+        annotationLocationFormatter.overlayLabel(
+            for: note,
+            format: currentBook?.format ?? .epub,
+            chapterPageCounts: currentBook?.chapterPageCounts
+        )
+    }
+
     func resetAutoHideToolbar() {
         showToolbar = true
         hideToolbarTask?.cancel()
@@ -204,6 +251,24 @@ final class ReaderStore {
             guard !Task.isCancelled else { return }
             self?.showToolbar = false
         }
+    }
+
+    private func makeExportFeedbackMessage(
+        summary: AnnotationExportSummary,
+        directoryURL: URL
+    ) -> String {
+        var lines = ["Папка: \(directoryURL.path)"]
+        lines.append("Экспортировано книг: \(summary.exportedCount)")
+
+        if summary.skippedCount > 0 {
+            lines.append("Пропущено без заметок: \(summary.skippedCount)")
+        }
+
+        if summary.failedCount > 0 {
+            lines.append("Ошибок: \(summary.failedCount)")
+        }
+
+        return lines.joined(separator: "\n")
     }
 }
 

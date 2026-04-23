@@ -102,6 +102,41 @@ struct AnnotationExportServiceTests {
         })
     }
 
+    @Test func exportsSelectedTextForStandaloneTextNote() async throws {
+        let database = try DatabaseManager.inMemory()
+        let libraryRepository = LibraryRepository(database: database)
+        let annotationRepository = AnnotationRepository(database: database)
+        let service = AnnotationExportService(
+            libraryRepository: libraryRepository,
+            annotationRepository: annotationRepository
+        )
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let book = try makeBook(title: "Standalone Note", format: .epub)
+        try await libraryRepository.insert(book)
+        try await annotationRepository.insertTextNote(
+            TextNote(
+                bookId: book.id,
+                cfiAnchor: "epubcfi(/6/2)||epubcfi(/6/4)",
+                selectedText: "Captured excerpt",
+                body: "Body"
+            )
+        )
+
+        let summary = await service.exportAll(to: directory)
+        let exportedURL = try #require(summary.results.compactMap { result -> URL? in
+            if case let .exported(fileURL) = result.status {
+                return fileURL
+            }
+            return nil
+        }.first)
+        let markdown = try String(contentsOf: exportedURL, encoding: .utf8)
+
+        #expect(markdown.contains("**Selected text**"))
+        #expect(markdown.contains("Captured excerpt"))
+    }
+
     @Test func filenamesAreStableAndFileSafe() async throws {
         let database = try DatabaseManager.inMemory()
         let libraryRepository = LibraryRepository(database: database)
@@ -138,11 +173,59 @@ struct AnnotationExportServiceTests {
         #expect(exportedURL.lastPathComponent == "a-b-c-d-e--\(String(book.id.prefix(8))).md")
     }
 
+    @Test func stickyExportUsesGlobalPageWhenChapterCountsAreKnown() async throws {
+        let database = try DatabaseManager.inMemory()
+        let libraryRepository = LibraryRepository(database: database)
+        let annotationRepository = AnnotationRepository(database: database)
+        let service = AnnotationExportService(
+            libraryRepository: libraryRepository,
+            annotationRepository: annotationRepository
+        )
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let bookURL = try makeBookFile(named: "global-page.epub", contents: "book")
+        defer { try? FileManager.default.removeItem(at: bookURL) }
+
+        let book = Book(
+            title: "Global Page Book",
+            author: "Author",
+            filePath: bookURL.path,
+            chapterPageCountsJSON: Book.encodeChapterPageCounts([4, 4, 4, 4, 4, 3, 10]),
+            format: .epub
+        )
+        try await libraryRepository.insert(book)
+        try await annotationRepository.insertPageNote(
+            PageNote(
+                bookId: book.id,
+                spineIndex: 6,
+                pageInChapter: 8,
+                body: "Sticky",
+                exchangeId: "sticky-1",
+                createdAt: Date(timeIntervalSince1970: 10),
+                updatedAt: Date(timeIntervalSince1970: 20)
+            )
+        )
+
+        let summary = await service.exportAll(to: directory)
+        let exportedURL = try #require(summary.results.compactMap { result -> URL? in
+            if case let .exported(fileURL) = result.status {
+                return fileURL
+            }
+            return nil
+        }.first)
+        let markdown = try String(contentsOf: exportedURL, encoding: .utf8)
+
+        #expect(markdown.contains("pageLabel: \"Page 32\""))
+        #expect(markdown.contains("> Page 32"))
+    }
+
     private func makeBook(title: String, format: BookFormat) throws -> Book {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension(format.rawValue)
-        try Data("book-\(title)".utf8).write(to: url)
+        let url = try makeBookFile(
+            named: UUID().uuidString,
+            fileExtension: format.rawValue,
+            contents: "book-\(title)"
+        )
 
         return Book(
             title: title,
@@ -150,6 +233,18 @@ struct AnnotationExportServiceTests {
             filePath: url.path,
             format: format
         )
+    }
+
+    private func makeBookFile(named name: String, fileExtension: String, contents: String) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(name)
+            .appendingPathExtension(fileExtension)
+        try Data(contents.utf8).write(to: url)
+        return url
+    }
+
+    private func makeBookFile(named name: String, contents: String) throws -> URL {
+        try makeBookFile(named: name, fileExtension: "epub", contents: contents)
     }
 
     private func makeTemporaryDirectory() throws -> URL {

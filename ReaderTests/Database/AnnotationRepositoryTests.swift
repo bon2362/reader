@@ -145,12 +145,13 @@ struct AnnotationRepositoryTests {
 
     @Test func insertAndFetchTextNote() async throws {
         let (ann, _, book) = try await makeSetup()
-        let n = TextNote(bookId: book.id, cfiAnchor: "cfi", body: "hello")
+        let n = TextNote(bookId: book.id, cfiAnchor: "cfi", selectedText: "quote", body: "hello")
         try await ann.insertTextNote(n)
 
         let list = try await ann.fetchTextNotes(bookId: book.id)
         #expect(list.count == 1)
         #expect(list[0].body == "hello")
+        #expect(list[0].selectedText == "quote")
     }
 
     @Test func textNoteLinkedToHighlight() async throws {

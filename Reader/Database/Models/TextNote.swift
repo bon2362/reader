@@ -6,6 +6,7 @@ struct TextNote: Identifiable, Codable, Hashable {
     var bookId: String
     var highlightId: String?
     var cfiAnchor: String
+    var selectedText: String?
     var body: String
     var exchangeId: String?
     var createdAt: Date
@@ -16,6 +17,7 @@ struct TextNote: Identifiable, Codable, Hashable {
         bookId: String,
         highlightId: String? = nil,
         cfiAnchor: String,
+        selectedText: String? = nil,
         body: String,
         exchangeId: String? = nil,
         createdAt: Date = Date(),
@@ -25,6 +27,7 @@ struct TextNote: Identifiable, Codable, Hashable {
         self.bookId = bookId
         self.highlightId = highlightId
         self.cfiAnchor = cfiAnchor
+        self.selectedText = selectedText
         self.body = body
         self.exchangeId = exchangeId ?? UUID().uuidString
         self.createdAt = createdAt
@@ -40,6 +43,7 @@ extension TextNote: FetchableRecord, PersistableRecord {
         static let bookId      = Column(CodingKeys.bookId)
         static let highlightId = Column(CodingKeys.highlightId)
         static let cfiAnchor   = Column(CodingKeys.cfiAnchor)
+        static let selectedText = Column(CodingKeys.selectedText)
         static let body        = Column(CodingKeys.body)
         static let exchangeId  = Column(CodingKeys.exchangeId)
         static let createdAt   = Column(CodingKeys.createdAt)
@@ -51,6 +55,7 @@ extension TextNote: FetchableRecord, PersistableRecord {
         case bookId      = "book_id"
         case highlightId = "highlight_id"
         case cfiAnchor   = "cfi_anchor"
+        case selectedText = "selected_text"
         case body
         case exchangeId  = "exchange_id"
         case createdAt   = "created_at"

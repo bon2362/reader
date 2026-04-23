@@ -143,7 +143,7 @@ struct MarkdownAnnotationEncoder: Sendable {
         if let selectedText = item.selectedText, !selectedText.isEmpty {
             lines.append("**Selected text**")
             lines.append("")
-            lines.append(contentsOf: normalizedLines(for: selectedText))
+            lines.append(contentsOf: blockquoteLines(for: selectedText))
             lines.append("")
         }
 
@@ -164,7 +164,7 @@ struct MarkdownAnnotationEncoder: Sendable {
         if let pageLabel = item.pageLabel, !pageLabel.isEmpty {
             lines.append("**Location**")
             lines.append("")
-            lines.append(contentsOf: normalizedLines(for: pageLabel))
+            lines.append(contentsOf: blockquoteLines(for: pageLabel))
             lines.append("")
         }
 

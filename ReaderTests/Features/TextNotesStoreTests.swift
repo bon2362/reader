@@ -40,6 +40,7 @@ struct TextNotesStoreTests {
         #expect(stored.count == 1)
         #expect(stored.first?.body == "My note")
         #expect(stored.first?.cfiAnchor == "cfi-s||cfi-e")
+        #expect(stored.first?.selectedText == "q")
         #expect(store.notes.count == 1)
         #expect(store.isEditorPresented == false)
         #expect(bridge.setAnnotationsCalls.last?.count == 1)
