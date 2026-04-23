@@ -1,6 +1,11 @@
 import Foundation
 import Observation
 
+struct AnnotationImportFeedback: Equatable {
+    var title: String
+    var message: String
+}
+
 @MainActor
 @Observable
 final class LibraryStore {
@@ -10,14 +15,21 @@ final class LibraryStore {
     var selectedBookID: String?
     var isExportingAnnotations: Bool = false
     var exportFeedback: AnnotationExportFeedback?
+    var isImportingAnnotations: Bool = false
+    var importPreview: AnnotationImportPreviewSummary?
+    var importFeedback: AnnotationImportFeedback?
 
+    private let database: DatabaseManager
     private let repository: LibraryRepositoryProtocol
     private let annotationRepository: AnnotationRepositoryProtocol
+    private var pendingAnnotationImportURLs: [URL] = []
 
     init(
+        database: DatabaseManager,
         repository: LibraryRepositoryProtocol,
         annotationRepository: AnnotationRepositoryProtocol
     ) {
+        self.database = database
         self.repository = repository
         self.annotationRepository = annotationRepository
     }
@@ -105,6 +117,62 @@ final class LibraryStore {
         )
     }
 
+    func prepareAnnotationImportPreview(urls: [URL]) async {
+        guard !urls.isEmpty else { return }
+
+        isImportingAnnotations = true
+        defer { isImportingAnnotations = false }
+
+        let service = AnnotationImportPreviewService(
+            libraryRepository: repository,
+            annotationRepository: annotationRepository
+        )
+        let summary = await service.preview(urls: urls)
+        pendingAnnotationImportURLs = urls
+        importPreview = summary
+    }
+
+    func applyPreparedAnnotationImport() async {
+        guard !pendingAnnotationImportURLs.isEmpty else { return }
+
+        isImportingAnnotations = true
+        defer { isImportingAnnotations = false }
+
+        let service = AnnotationImportService(
+            database: database,
+            libraryRepository: repository
+        )
+        let summary = await service.apply(urls: pendingAnnotationImportURLs)
+
+        clearImportPreview()
+
+        if summary.importedBookCount == 0,
+           summary.failedBookCount > 0 || summary.invalidFileCount > 0 {
+            errorMessage = makeImportFailureMessage(summary: summary)
+            return
+        }
+
+        importFeedback = AnnotationImportFeedback(
+            title: "Импорт завершён",
+            message: makeImportFeedbackMessage(summary: summary)
+        )
+    }
+
+    func clearImportPreview() {
+        importPreview = nil
+        pendingAnnotationImportURLs = []
+    }
+
+    var canApplyPreparedImport: Bool {
+        guard let importPreview else { return false }
+        return importPreview.files.contains { file in
+            if case .ready = file.status {
+                return true
+            }
+            return false
+        }
+    }
+
     func resolveBookURL(_ book: Book) -> URL? {
         let url = URL(fileURLWithPath: book.filePath)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
@@ -126,6 +194,52 @@ final class LibraryStore {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    private func makeImportFeedbackMessage(summary: AnnotationImportSummary) -> String {
+        var lines = ["Импортировано книг: \(summary.importedBookCount)"]
+        lines.append("Создано аннотаций: \(summary.createCount)")
+        lines.append("Обновлено аннотаций: \(summary.updateCount)")
+
+        if summary.skipCount > 0 {
+            lines.append("Пропущено аннотаций: \(summary.skipCount)")
+        }
+        if summary.unmatchedBookCount > 0 {
+            lines.append("Файлов без найденной книги: \(summary.unmatchedBookCount)")
+        }
+        if summary.invalidFileCount > 0 {
+            lines.append("Невалидных файлов: \(summary.invalidFileCount)")
+        }
+        if summary.failedBookCount > 0 {
+            lines.append("Ошибок по книгам: \(summary.failedBookCount)")
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
+    private func makeImportFailureMessage(summary: AnnotationImportSummary) -> String {
+        var issues: [String] = []
+
+        let failedTitles = summary.results.compactMap { result -> String? in
+            if case .failed = result.status {
+                return result.title
+            }
+            return nil
+        }
+        if !failedTitles.isEmpty {
+            issues.append("Ошибки книг: \(failedTitles.joined(separator: ", "))")
+        }
+        if summary.invalidFileCount > 0 {
+            issues.append("Невалидных файлов: \(summary.invalidFileCount)")
+        }
+        if summary.unmatchedBookCount > 0 {
+            issues.append("Файлов без совпавшей книги: \(summary.unmatchedBookCount)")
+        }
+
+        if issues.isEmpty {
+            return "Не удалось импортировать аннотации."
+        }
+        return issues.joined(separator: "\n")
     }
 
     private func repairBrokenPDFMetadataIfNeeded(in fetchedBooks: [Book]) async -> [Book] {

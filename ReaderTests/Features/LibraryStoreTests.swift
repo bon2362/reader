@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import CryptoKit
 import ZIPFoundation
 @testable import Reader
 
@@ -12,7 +13,11 @@ struct LibraryStoreTests {
         let repo = LibraryRepository(database: db)
         let annotationRepository = AnnotationRepository(database: db)
         return (
-            LibraryStore(repository: repo, annotationRepository: annotationRepository),
+            LibraryStore(
+                database: db,
+                repository: repo,
+                annotationRepository: annotationRepository
+            ),
             repo,
             annotationRepository
         )
@@ -186,5 +191,172 @@ struct LibraryStoreTests {
         #expect(store.errorMessage == nil)
         #expect(store.exportFeedback?.title == "Экспорт завершён")
         #expect(store.exportFeedback?.message.contains("Экспортировано книг: 1") == true)
+    }
+
+    @Test func prepareAnnotationImportPreviewStoresPreviewAndAllowsApply() async throws {
+        let (store, repo, _) = try makeStore()
+        let bookFile = try makeBookFile(contents: "library-import-preview-book")
+        let book = Book(title: "Import Preview", author: "Jane Doe", filePath: bookFile.path, format: .epub)
+        try await repo.insert(book)
+        let markdownURL = try makeMarkdownFile(
+            markdown: sampleMarkdown(
+                title: book.title,
+                author: book.author,
+                contentHash: try sha256Hex(of: bookFile),
+                items: sampleImportItems
+            )
+        )
+        defer {
+            try? FileManager.default.removeItem(at: markdownURL.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: bookFile)
+        }
+
+        await store.prepareAnnotationImportPreview(urls: [markdownURL])
+
+        #expect(store.isImportingAnnotations == false)
+        #expect(store.importPreview?.createCount == 3)
+        #expect(store.importPreview?.updateCount == 0)
+        #expect(store.importPreview?.skipCount == 0)
+        #expect(store.canApplyPreparedImport == true)
+    }
+
+    @Test func applyPreparedAnnotationImportImportsAnnotationsAndClearsPreview() async throws {
+        let (store, repo, annotationRepository) = try makeStore()
+        let bookFile = try makeBookFile(contents: "library-import-apply-book")
+        let book = Book(title: "Import Apply", author: "Jane Doe", filePath: bookFile.path, format: .epub)
+        try await repo.insert(book)
+        let markdownURL = try makeMarkdownFile(
+            markdown: sampleMarkdown(
+                title: book.title,
+                author: book.author,
+                contentHash: try sha256Hex(of: bookFile),
+                items: sampleImportItems
+            )
+        )
+        defer {
+            try? FileManager.default.removeItem(at: markdownURL.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: bookFile)
+        }
+
+        await store.prepareAnnotationImportPreview(urls: [markdownURL])
+        await store.applyPreparedAnnotationImport()
+
+        #expect(store.isImportingAnnotations == false)
+        #expect(store.importPreview == nil)
+        #expect(store.canApplyPreparedImport == false)
+        #expect(store.errorMessage == nil)
+        #expect(store.importFeedback?.title == "Импорт завершён")
+        #expect(store.importFeedback?.message.contains("Импортировано книг: 1") == true)
+        #expect(try await annotationRepository.fetchHighlights(bookId: book.id).count == 1)
+        #expect(try await annotationRepository.fetchTextNotes(bookId: book.id).count == 1)
+        #expect(try await annotationRepository.fetchPageNotes(bookId: book.id).count == 1)
+    }
+
+    private func sampleMarkdown(
+        title: String,
+        author: String?,
+        contentHash: String,
+        items: String
+    ) -> String {
+        """
+        ---
+        format: "reader-annotations/v1"
+        exportedAt: "2025-04-22T12:30:00Z"
+        book:
+          id: "book-1"
+          title: "\(title)"
+          author: "\(author ?? "")"
+          format: "epub"
+          contentHash: "\(contentHash)"
+        ---
+
+        # Annotations
+
+        \(items)
+        """
+    }
+
+    private var sampleImportItems: String {
+        """
+        ## Highlights
+
+        ### Highlight
+        <!--
+        id: "highlight-1"
+        type: "highlight"
+        anchor:
+          scheme: "cfi"
+          value: "start||end"
+        createdAt: "2025-04-22T11:00:00Z"
+        updatedAt: "2025-04-22T12:00:00Z"
+        color: "yellow"
+        selectedText: "Important quote"
+        -->
+
+        > Important quote
+
+        ## Text Notes
+
+        ### Text Note
+        <!--
+        id: "text-note-1"
+        type: "text_note"
+        anchor:
+          scheme: "cfi"
+          value: "note-anchor"
+        createdAt: "2025-04-22T11:10:00Z"
+        updatedAt: "2025-04-22T12:10:00Z"
+        selectedText: "Selected"
+        -->
+
+        **Selected text**
+
+        > Selected
+
+        **Note**
+
+        Body
+
+        ## Sticky Notes
+
+        ### Sticky Note
+        <!--
+        id: "sticky-note-1"
+        type: "sticky_note"
+        anchor:
+          scheme: "page"
+          value: "17"
+        createdAt: "2025-04-22T11:20:00Z"
+        updatedAt: "2025-04-22T12:20:00Z"
+        pageLabel: "Стр. 17"
+        -->
+
+        **Location**
+
+        > Стр. 17
+
+        **Note**
+
+        Remember this section.
+        """
+    }
+
+    private func makeMarkdownFile(markdown: String) throws -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("annotations.md")
+        try markdown.write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
+    private func makeBookFile(contents: String) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("library-store-\(UUID().uuidString).epub")
+        try Data(contents.utf8).write(to: url)
+        return url
+    }
+
+    private func sha256Hex(of url: URL) throws -> String {
+        let data = try Data(contentsOf: url)
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 }

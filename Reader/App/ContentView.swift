@@ -12,6 +12,7 @@ struct ContentView: View {
             let libraryRepo = LibraryRepository(database: db)
             let annotationRepo = AnnotationRepository(database: db)
             _libraryStore = State(initialValue: LibraryStore(
+                database: db,
                 repository: libraryRepo,
                 annotationRepository: annotationRepo
             ))
