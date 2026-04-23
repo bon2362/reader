@@ -134,6 +134,8 @@ struct NativeEPUBWebView: NSViewRepresentable {
         }
 
         window.__reader = {
+            currentPage: function() { return currentPage(); },
+            totalPages: function() { return totalPages(); },
             goToPage: function(i) {
                 var max = totalPages() - 1;
                 __page = Math.min(Math.max(0, i), max);

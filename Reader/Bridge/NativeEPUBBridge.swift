@@ -17,6 +17,8 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
     private var preflightComplete: Bool = false
     private var cachedPageCounts: [Int] = []
     private var pendingInitialCFI: String?
+    private var revealTask: Task<Void, Never>?
+    private var isConcealingChapter: Bool = false
 
     // Stack of navigation sources for "back from link/footnote"
     private struct NavFrame { let chapterIndex: Int; let page: Int }
@@ -59,6 +61,7 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
     }
 
     deinit {
+        revealTask?.cancel()
         webView?.configuration.userContentController.removeScriptMessageHandler(forName: "native")
         preflightView?.configuration.userContentController.removeScriptMessageHandler(forName: "native")
     }
@@ -154,17 +157,26 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
     }
 
     func nextPage() {
-        if pageInChapter < totalInChapter - 1 {
-            evaluate("window.__reader && window.__reader.nextPage();")
-        } else if let book, currentChapterIndex < book.chapters.count - 1 {
+        Task { @MainActor in
+            guard let book else { return }
+            if let result = await performPageTurn("window.__reader && window.__reader.nextPage();"),
+               result.didMove {
+                syncCurrentChapterPage(page: result.after, totalPages: result.totalPages)
+                return
+            }
+            guard currentChapterIndex < book.chapters.count - 1 else { return }
             loadChapter(at: currentChapterIndex + 1, restorePage: 0)
         }
     }
 
     func prevPage() {
-        if pageInChapter > 0 {
-            evaluate("window.__reader && window.__reader.prevPage();")
-        } else if currentChapterIndex > 0 {
+        Task { @MainActor in
+            if let result = await performPageTurn("window.__reader && window.__reader.prevPage();"),
+               result.didMove {
+                syncCurrentChapterPage(page: result.after, totalPages: result.totalPages)
+                return
+            }
+            guard currentChapterIndex > 0 else { return }
             loadChapter(at: currentChapterIndex - 1, restorePage: -1) // -1 = last page
         }
     }
@@ -278,6 +290,9 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
         pageInChapter = 0
         totalInChapter = 1
         pendingRestorePage = restorePage
+        revealTask?.cancel()
+        isConcealingChapter = true
+        webView.alphaValue = 0
 
         webView.loadFileURL(chapter.fileURL, allowingReadAccessTo: book.rootDir)
     }
@@ -293,6 +308,41 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
 
     private func evaluate(_ js: String) {
         webView?.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    private func evaluateForResult(_ js: String) async -> PageTurnResult? {
+        guard let webView else { return nil }
+        return await withCheckedContinuation { continuation in
+            webView.evaluateJavaScript(js) { result, error in
+                if let error {
+                    NSLog("[NativeEPUBBridge] JS eval failed: %@", error.localizedDescription)
+                }
+                continuation.resume(returning: Self.parsePageTurnResult(result))
+            }
+        }
+    }
+
+    private func performPageTurn(_ js: String) async -> PageTurnResult? {
+        await evaluateForResult("""
+        (() => {
+            if (!window.__reader) {
+                return null;
+            }
+            const before = window.__reader.currentPage();
+            \(js)
+            return {
+                before,
+                after: window.__reader.currentPage(),
+                totalPages: window.__reader.totalPages()
+            };
+        })();
+        """)
+    }
+
+    private func syncCurrentChapterPage(page: Int, totalPages: Int) {
+        pageInChapter = page
+        totalInChapter = max(1, totalPages)
+        reportPageChanged()
     }
 
     private func applyOneJS(_ h: StoredHighlight) -> String {
@@ -316,6 +366,24 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
         let idEsc = h.id.replacingOccurrences(of: "\"", with: "\\\"")
         let colorEsc = h.color.replacingOccurrences(of: "\"", with: "\\\"")
         return "{\"id\":\"\(idEsc)\",\"startOffset\":\(h.startOffset),\"endOffset\":\(h.endOffset),\"color\":\"\(colorEsc)\"}"
+    }
+
+    struct PageTurnResult: Equatable {
+        let before: Int
+        let after: Int
+        let totalPages: Int
+
+        var didMove: Bool { before != after }
+    }
+
+    nonisolated static func parsePageTurnResult(_ value: Any?) -> PageTurnResult? {
+        guard let dict = value as? [String: Any],
+              let before = dict["before"] as? Int,
+              let after = dict["after"] as? Int,
+              let totalPages = dict["totalPages"] as? Int else {
+            return nil
+        }
+        return PageTurnResult(before: before, after: after, totalPages: totalPages)
     }
 
     // MARK: - Anchor parsing
@@ -369,6 +437,7 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
             if let page = dict["page"] as? Int, let total = dict["totalPages"] as? Int {
                 pageInChapter = page
                 totalInChapter = max(1, total)
+                guard !shouldDeferPageChangedReport else { return }
                 reportPageChanged()
             }
         case "textSelected":
@@ -409,6 +478,15 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
     }
 
     private var preflightStarted = false
+    private var shouldDeferPageChangedReport: Bool {
+        if isConcealingChapter {
+            return true
+        }
+        if let restorePage = pendingRestorePage, restorePage != 0 {
+            return true
+        }
+        return pendingAnchorId != nil || pendingOffset != nil
+    }
 
     private func handleReady() {
         // Once main is ready we know the container has a real size — kick off preflight.
@@ -442,6 +520,20 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
         if let offset = pendingOffset {
             goToOffset(offset)
             pendingOffset = nil
+        }
+        scheduleReveal()
+    }
+
+    private func scheduleReveal() {
+        revealTask?.cancel()
+        guard let webView else { return }
+        revealTask = Task { @MainActor [weak webView] in
+            // Let the initial restored page paint before revealing the chapter.
+            try? await Task.sleep(nanoseconds: 60_000_000)
+            guard !Task.isCancelled else { return }
+            isConcealingChapter = false
+            webView?.alphaValue = 1
+            reportPageChanged()
         }
     }
 
