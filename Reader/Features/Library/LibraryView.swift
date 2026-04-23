@@ -10,6 +10,7 @@ struct LibraryView: View {
     @State private var activeImporter: ActiveImporter?
     @State private var pendingDeletionBook: Book?
     @State private var securityScopedAnnotationImportURLs: [URL] = []
+    @State private var isBookDropTargeted = false
 
     private let columns = [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 20)]
 
@@ -37,8 +38,18 @@ struct LibraryView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(24)
         }
+        .overlay {
+            if isBookDropTargeted {
+                libraryDropOverlay
+            }
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
+        .dropDestination(for: URL.self) { urls, _ in
+            handleDroppedBookURLs(urls)
+        } isTargeted: { isTargeted in
+            isBookDropTargeted = isTargeted
+        }
         .onTapGesture {
             store.clearSelection()
         }
@@ -124,6 +135,17 @@ struct LibraryView: View {
         } message: {
             Text(store.importFeedback?.message ?? "")
         }
+        .alert(
+            store.libraryImportFeedback?.title ?? "Импорт книг",
+            isPresented: .init(
+                get: { store.libraryImportFeedback != nil },
+                set: { if !$0 { store.clearLibraryImportFeedback() } }
+            )
+        ) {
+            Button("OK", role: .cancel) { store.clearLibraryImportFeedback() }
+        } message: {
+            Text(store.libraryImportFeedback?.message ?? "")
+        }
         .sheet(
             isPresented: .init(
                 get: { store.importPreview != nil },
@@ -161,6 +183,27 @@ struct LibraryView: View {
         }
     }
 
+    @ViewBuilder
+    private var libraryDropOverlay: some View {
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .fill(Color.accentColor.opacity(0.12))
+            .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [8, 8]))
+            .overlay {
+                VStack(spacing: 10) {
+                    Image(systemName: "books.vertical.fill")
+                        .font(.system(size: 30, weight: .semibold))
+                    Text("Перетащите EPUB или PDF в библиотеку")
+                        .font(.system(size: 16, weight: .semibold))
+                    Text("Можно добавить сразу несколько книг")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(24)
+            }
+            .padding(24)
+            .allowsHitTesting(false)
+    }
+
     private var importerAllowsMultipleSelection: Bool {
         switch activeImporter {
         case .annotations:
@@ -186,15 +229,34 @@ struct LibraryView: View {
     private func handleBookImportSelection(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
-            guard let url = urls.first else { return }
-            let accessed = url.startAccessingSecurityScopedResource()
             Task {
-                await store.importBook(from: url)
-                if accessed { url.stopAccessingSecurityScopedResource() }
+                let scopedURLs = urls.filter { $0.startAccessingSecurityScopedResource() }
+                await store.importBooks(from: urls)
+                releaseSecurityScopedURLs(scopedURLs)
             }
         case .failure(let error):
             store.errorMessage = error.localizedDescription
         }
+    }
+
+    private func handleDroppedBookURLs(_ urls: [URL]) -> Bool {
+        let bookURLs = urls.filter(isSupportedBookURL)
+        guard !bookURLs.isEmpty else {
+            store.errorMessage = "Поддерживаются только EPUB и PDF"
+            return false
+        }
+
+        Task {
+            let scopedURLs = bookURLs.filter { $0.startAccessingSecurityScopedResource() }
+            await store.importBooks(from: bookURLs)
+            releaseSecurityScopedURLs(scopedURLs)
+        }
+        return true
+    }
+
+    private func isSupportedBookURL(_ url: URL) -> Bool {
+        let ext = url.pathExtension.lowercased()
+        return ext == BookFormat.epub.rawValue || ext == BookFormat.pdf.rawValue
     }
 
     private func requestDeletion(of book: Book) {
@@ -284,10 +346,14 @@ struct LibraryView: View {
     }
 
     private func releaseSecurityScopedAnnotationImportURLs() {
-        for url in securityScopedAnnotationImportURLs {
+        releaseSecurityScopedURLs(securityScopedAnnotationImportURLs)
+        securityScopedAnnotationImportURLs = []
+    }
+
+    private func releaseSecurityScopedURLs(_ urls: [URL]) {
+        for url in urls {
             url.stopAccessingSecurityScopedResource()
         }
-        securityScopedAnnotationImportURLs = []
     }
 }
 

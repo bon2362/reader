@@ -112,6 +112,53 @@ struct LibraryStoreTests {
         }
     }
 
+    @Test func importBooksImportsMultipleSupportedBooks() async throws {
+        let (store, _, _) = try makeStore()
+
+        let first = try EPUBTestFactory.makeMinimalEPUB(title: "First", author: "One")
+        let second = try EPUBTestFactory.makeMinimalEPUB(title: "Second", author: "Two")
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+        }
+
+        await store.importBooks(from: [first, second])
+
+        #expect(store.books.count == 2)
+        #expect(Set(store.books.map(\.title)) == ["First", "Second"])
+        #expect(store.libraryImportFeedback?.title == "Книги импортированы")
+        #expect(store.libraryImportFeedback?.message == "Добавлено книг: 2")
+
+        for id in store.books.map(\.id) {
+            try? FileAccess.deleteBookFiles(bookId: id)
+        }
+    }
+
+    @Test func importBooksReportsPartialFailures() async throws {
+        let (store, _, _) = try makeStore()
+
+        let valid = try EPUBTestFactory.makeMinimalEPUB(title: "Imported", author: "Author")
+        let invalid = FileManager.default.temporaryDirectory.appendingPathComponent("not-a-book-\(UUID().uuidString).txt")
+        try Data("plain text".utf8).write(to: invalid)
+        defer {
+            try? FileManager.default.removeItem(at: valid)
+            try? FileManager.default.removeItem(at: invalid)
+        }
+
+        await store.importBooks(from: [valid, invalid])
+
+        #expect(store.books.count == 1)
+        #expect(store.books.first?.title == "Imported")
+        #expect(store.errorMessage == nil)
+        #expect(store.libraryImportFeedback?.title == "Импорт завершён частично")
+        #expect(store.libraryImportFeedback?.message.contains("Добавлено книг: 1") == true)
+        #expect(store.libraryImportFeedback?.message.contains(invalid.lastPathComponent) == true)
+
+        if let id = store.books.first?.id {
+            try? FileAccess.deleteBookFiles(bookId: id)
+        }
+    }
+
     @Test func loadBooksRepairsBrokenPDFMetadata() async throws {
         let (store, repo, _) = try makeStore()
         let url = try TestPDFFactory.makeTextPDF(

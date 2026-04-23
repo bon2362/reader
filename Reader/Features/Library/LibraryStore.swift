@@ -18,6 +18,7 @@ final class LibraryStore {
     var isImportingAnnotations: Bool = false
     var importPreview: AnnotationImportPreviewSummary?
     var importFeedback: AnnotationImportFeedback?
+    var libraryImportFeedback: AnnotationImportFeedback?
 
     private let database: DatabaseManager
     private let repository: LibraryRepositoryProtocol
@@ -49,13 +50,64 @@ final class LibraryStore {
     }
 
     func importBook(from url: URL) async {
-        do {
-            let book = try await BookImporter.importBook(from: url, using: repository)
-            books.insert(book, at: 0)
-            selectedBookID = book.id
-        } catch {
-            errorMessage = error.localizedDescription
+        await importBooks(from: [url])
+    }
+
+    func importBooks(from urls: [URL]) async {
+        guard !urls.isEmpty else { return }
+
+        errorMessage = nil
+        libraryImportFeedback = nil
+
+        var importedBooks: [Book] = []
+        var failedImports: [String] = []
+
+        for url in urls {
+            do {
+                let book = try await BookImporter.importBook(from: url, using: repository)
+                importedBooks.append(book)
+            } catch {
+                failedImports.append("\(url.lastPathComponent): \(error.localizedDescription)")
+            }
         }
+
+        if !importedBooks.isEmpty {
+            books = importedBooks.reversed() + books
+            selectedBookID = importedBooks.last?.id
+        }
+
+        if !failedImports.isEmpty {
+            if importedBooks.isEmpty {
+                errorMessage = failedImports.joined(separator: "\n")
+            } else {
+                libraryImportFeedback = AnnotationImportFeedback(
+                    title: "Импорт завершён частично",
+                    message: makeLibraryImportFeedbackMessage(
+                        importedCount: importedBooks.count,
+                        failedImports: failedImports
+                    )
+                )
+            }
+        } else if importedBooks.count > 1 {
+            libraryImportFeedback = AnnotationImportFeedback(
+                title: "Книги импортированы",
+                message: "Добавлено книг: \(importedBooks.count)"
+            )
+        }
+    }
+
+    private func makeLibraryImportFeedbackMessage(
+        importedCount: Int,
+        failedImports: [String]
+    ) -> String {
+        var lines = ["Добавлено книг: \(importedCount)"]
+        lines.append("Не удалось импортировать:")
+        lines.append(contentsOf: failedImports)
+        return lines.joined(separator: "\n")
+    }
+
+    func clearLibraryImportFeedback() {
+        libraryImportFeedback = nil
     }
 
     func latestBook(id: String) async -> Book? {
