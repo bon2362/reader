@@ -80,6 +80,15 @@ struct LibraryStoreTests {
         #expect(store.selectedBookID == "book-123")
     }
 
+    @Test func clearSelectionResetsSelectedId() throws {
+        let (store, _, _) = try makeStore()
+
+        store.selectBook(id: "book-123")
+        store.clearSelection()
+
+        #expect(store.selectedBookID == nil)
+    }
+
     @Test func importBookFromMinimalEPUB() async throws {
         let (store, _, _) = try makeStore()
 

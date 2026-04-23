@@ -69,14 +69,6 @@ struct BookCardView: View {
                     .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
 
                 HStack(spacing: 6) {
-                    if book.format == .pdf {
-                        Image(systemName: "doc.richtext")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(6)
-                            .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 6))
-                    }
-
                     if isSelected {
                         Button(role: .destructive, action: onDelete) {
                             Image(systemName: "xmark")
@@ -135,7 +127,11 @@ struct BookCardView: View {
             isHovered = hovered
         }
         .onTapGesture { onSelect() }
-        .onTapGesture(count: 2) { onOpen() }
+        // Keep double-click open behavior without forcing single-click selection
+        // to wait for the double-click recognition timeout.
+        .simultaneousGesture(
+            TapGesture(count: 2).onEnded { onOpen() }
+        )
         .animation(.easeInOut(duration: 0.14), value: isHovered)
         .animation(.easeInOut(duration: 0.14), value: isSelected)
         .contextMenu {

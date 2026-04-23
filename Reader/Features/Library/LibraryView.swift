@@ -13,53 +13,42 @@ struct LibraryView: View {
     private let columns = [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 20)]
 
     var body: some View {
-        Group {
-            if store.books.isEmpty && !store.isLoading {
-                emptyState
-            } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 24) {
-                        ForEach(store.books) { book in
-                            BookCardView(
-                                book: book,
-                                isSelected: store.selectedBookID == book.id,
-                                onSelect: { store.selectBook(id: book.id) },
-                                onOpen: {
-                                    store.selectBook(id: book.id)
-                                    openBook(book)
-                                },
-                                onOpenTest: { openBookTest(book) },
-                                onDelete: { requestDeletion(of: book) }
-                            )
-                        }
-                    }
-                    .padding(24)
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 24) {
+                AddBookCardView {
+                    showImporter = true
+                }
+
+                ForEach(store.books) { book in
+                    BookCardView(
+                        book: book,
+                        isSelected: store.selectedBookID == book.id,
+                        onSelect: { store.selectBook(id: book.id) },
+                        onOpen: {
+                            store.selectBook(id: book.id)
+                            openBook(book)
+                        },
+                        onOpenTest: { openBookTest(book) },
+                        onDelete: { requestDeletion(of: book) }
+                    )
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            store.clearSelection()
         }
         .navigationTitle("Библиотека")
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showImporter = true
-                } label: {
-                    Label("Импорт", systemImage: "plus")
-                }
-            }
             ToolbarItem(placement: .secondaryAction) {
                 Button(action: chooseExportDirectoryAndStart) {
                     Label("Экспортировать всё", systemImage: store.isExportingAnnotations ? "arrow.up.circle.fill" : "square.and.arrow.up")
                 }
                 .disabled(store.isExportingAnnotations)
                 .help(store.isExportingAnnotations ? "Экспорт всех заметок..." : "Экспортировать заметки всех книг")
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button(role: .destructive) {
-                    requestDeletionOfSelectedBook()
-                } label: {
-                    Label("Удалить", systemImage: "trash")
-                }
-                .disabled(selectedBook == nil)
             }
         }
         .onDeleteCommand(perform: requestDeletionOfSelectedBook)
@@ -121,17 +110,6 @@ struct LibraryView: View {
             return nil
         }
         return store.books.first(where: { $0.id == selectedBookID })
-    }
-
-    private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Нет книг", systemImage: "books.vertical")
-        } description: {
-            Text("Нажмите + чтобы добавить EPUB или PDF файл")
-        } actions: {
-            Button("Импорт EPUB/PDF") { showImporter = true }
-                .buttonStyle(.borderedProminent)
-        }
     }
 
     private func handleImport(_ result: Result<[URL], Error>) {
