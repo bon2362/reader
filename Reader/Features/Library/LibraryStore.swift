@@ -8,11 +8,18 @@ final class LibraryStore {
     var isLoading: Bool = false
     var errorMessage: String?
     var selectedBookID: String?
+    var isExportingAnnotations: Bool = false
+    var exportFeedback: AnnotationExportFeedback?
 
     private let repository: LibraryRepositoryProtocol
+    private let annotationRepository: AnnotationRepositoryProtocol
 
-    init(repository: LibraryRepositoryProtocol) {
+    init(
+        repository: LibraryRepositoryProtocol,
+        annotationRepository: AnnotationRepositoryProtocol
+    ) {
         self.repository = repository
+        self.annotationRepository = annotationRepository
     }
 
     func loadBooks() async {
@@ -69,9 +76,56 @@ final class LibraryStore {
         selectedBookID = nil
     }
 
+    func exportAllAnnotations(to directoryURL: URL) async {
+        isExportingAnnotations = true
+        defer { isExportingAnnotations = false }
+
+        let service = AnnotationExportService(
+            libraryRepository: repository,
+            annotationRepository: annotationRepository
+        )
+        let summary = await service.exportAll(to: directoryURL)
+
+        if summary.exportedCount == 0, summary.failedCount > 0 {
+            let failedTitles = summary.results.compactMap { result -> String? in
+                if case .failed = result.status {
+                    return result.title
+                }
+                return nil
+            }
+            errorMessage = failedTitles.isEmpty
+                ? "Не удалось экспортировать заметки."
+                : "Не удалось экспортировать заметки: \(failedTitles.joined(separator: ", "))"
+            return
+        }
+
+        exportFeedback = AnnotationExportFeedback(
+            title: "Экспорт завершён",
+            message: makeExportFeedbackMessage(summary: summary, directoryURL: directoryURL)
+        )
+    }
+
     func resolveBookURL(_ book: Book) -> URL? {
         let url = URL(fileURLWithPath: book.filePath)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    private func makeExportFeedbackMessage(
+        summary: AnnotationExportSummary,
+        directoryURL: URL
+    ) -> String {
+        var lines = ["Папка: \(directoryURL.path)"]
+        lines.append("Экспортировано книг: \(summary.exportedCount)")
+
+        if summary.skippedCount > 0 {
+            lines.append("Пропущено без заметок: \(summary.skippedCount)")
+        }
+
+        if summary.failedCount > 0 {
+            lines.append("Ошибок: \(summary.failedCount)")
+        }
+
+        return lines.joined(separator: "\n")
     }
 
     private func repairBrokenPDFMetadataIfNeeded(in fetchedBooks: [Book]) async -> [Book] {

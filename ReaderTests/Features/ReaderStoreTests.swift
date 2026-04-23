@@ -223,13 +223,14 @@ struct ReaderStoreTests {
                 selectedText: "Quote"
             )
         )
+        store.currentBook = book
 
         await store.exportAnnotations(to: exportDirectory)
 
         #expect(store.isExportingAnnotations == false)
         #expect(store.errorMessage == nil)
         #expect(store.exportFeedback?.title == "Экспорт завершён")
-        #expect(store.exportFeedback?.message.contains("Экспортировано книг: 1") == true)
+        #expect(store.exportFeedback?.message.contains("Книга: Export Book") == true)
     }
 
     @Test func exportAnnotationsShowsErrorWhenAllExportsFail() async throws {
@@ -250,12 +251,36 @@ struct ReaderStoreTests {
                 body: "Body"
             )
         )
+        store.currentBook = book
 
         await store.exportAnnotations(to: exportDirectory)
 
         #expect(store.isExportingAnnotations == false)
         #expect(store.exportFeedback == nil)
         #expect(store.errorMessage?.contains("Broken Export") == true)
+    }
+
+    @Test func exportAnnotationsShowsSkippedFeedbackForBookWithoutAnnotations() async throws {
+        let db = try DatabaseManager.inMemory()
+        let lib = LibraryRepository(database: db)
+        let ann = AnnotationRepository(database: db)
+        let store = ReaderStore(libraryRepository: lib, annotationRepository: ann)
+        let bookURL = try makeTemporaryBookFile(named: "empty.epub", contents: "book")
+        let exportDirectory = try makeTemporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: bookURL)
+            try? FileManager.default.removeItem(at: exportDirectory)
+        }
+
+        let book = Book(title: "Empty Export", filePath: bookURL.path, format: .epub)
+        try await lib.insert(book)
+        store.currentBook = book
+
+        await store.exportAnnotations(to: exportDirectory)
+
+        #expect(store.errorMessage == nil)
+        #expect(store.exportFeedback?.title == "Экспорт не требуется")
+        #expect(store.exportFeedback?.message.contains("нет заметок") == true)
     }
 
     private func makeTemporaryDirectory() throws -> URL {

@@ -36,6 +36,40 @@ struct AnnotationExportService: Sendable {
         self.encoder = encoder
     }
 
+    func exportBook(bookId: String, to directoryURL: URL) async -> AnnotationBookExportResult {
+        let fileManager = FileManager.default
+
+        let book: Book
+        do {
+            guard let fetchedBook = try await libraryRepository.fetch(id: bookId) else {
+                return AnnotationBookExportResult(
+                    bookId: bookId,
+                    title: "Unknown Book",
+                    status: .failed(message: "Book not found")
+                )
+            }
+            book = fetchedBook
+        } catch {
+            return AnnotationBookExportResult(
+                bookId: bookId,
+                title: "Unknown Book",
+                status: .failed(message: error.localizedDescription)
+            )
+        }
+
+        do {
+            try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        } catch {
+            return AnnotationBookExportResult(
+                bookId: book.id,
+                title: book.title,
+                status: .failed(message: error.localizedDescription)
+            )
+        }
+
+        return await exportBook(book, to: directoryURL)
+    }
+
     func exportAll(to directoryURL: URL) async -> AnnotationExportSummary {
         let fileManager = FileManager.default
         var results: [AnnotationBookExportResult] = []
@@ -76,48 +110,7 @@ struct AnnotationExportService: Sendable {
         }
 
         for book in books {
-            do {
-                let highlights = try await annotationRepository.fetchHighlights(bookId: book.id)
-                let textNotes = try await annotationRepository.fetchTextNotes(bookId: book.id)
-                let stickyNotes = try await annotationRepository.fetchPageNotes(bookId: book.id)
-
-                guard highlights.isEmpty == false || textNotes.isEmpty == false || stickyNotes.isEmpty == false else {
-                    results.append(
-                        AnnotationBookExportResult(
-                            bookId: book.id,
-                            title: book.title,
-                            status: .skipped(reason: "No annotations")
-                        )
-                    )
-                    continue
-                }
-
-                let document = try makeExchangeDocument(
-                    book: book,
-                    highlights: highlights,
-                    textNotes: textNotes,
-                    stickyNotes: stickyNotes
-                )
-                let markdown = try encoder.encode(document)
-                let fileURL = fileURL(for: book, directoryURL: directoryURL)
-                try markdown.write(to: fileURL, atomically: true, encoding: .utf8)
-
-                results.append(
-                    AnnotationBookExportResult(
-                        bookId: book.id,
-                        title: book.title,
-                        status: .exported(fileURL: fileURL)
-                    )
-                )
-            } catch {
-                results.append(
-                    AnnotationBookExportResult(
-                        bookId: book.id,
-                        title: book.title,
-                        status: .failed(message: error.localizedDescription)
-                    )
-                )
-            }
+            results.append(await exportBook(book, to: directoryURL))
         }
 
         return AnnotationExportSummary(
@@ -135,6 +128,44 @@ struct AnnotationExportService: Sendable {
             }.count,
             results: results
         )
+    }
+
+    private func exportBook(_ book: Book, to directoryURL: URL) async -> AnnotationBookExportResult {
+        do {
+            let highlights = try await annotationRepository.fetchHighlights(bookId: book.id)
+            let textNotes = try await annotationRepository.fetchTextNotes(bookId: book.id)
+            let stickyNotes = try await annotationRepository.fetchPageNotes(bookId: book.id)
+
+            guard highlights.isEmpty == false || textNotes.isEmpty == false || stickyNotes.isEmpty == false else {
+                return AnnotationBookExportResult(
+                    bookId: book.id,
+                    title: book.title,
+                    status: .skipped(reason: "No annotations")
+                )
+            }
+
+            let document = try makeExchangeDocument(
+                book: book,
+                highlights: highlights,
+                textNotes: textNotes,
+                stickyNotes: stickyNotes
+            )
+            let markdown = try encoder.encode(document)
+            let fileURL = fileURL(for: book, directoryURL: directoryURL)
+            try markdown.write(to: fileURL, atomically: true, encoding: .utf8)
+
+            return AnnotationBookExportResult(
+                bookId: book.id,
+                title: book.title,
+                status: .exported(fileURL: fileURL)
+            )
+        } catch {
+            return AnnotationBookExportResult(
+                bookId: book.id,
+                title: book.title,
+                status: .failed(message: error.localizedDescription)
+            )
+        }
     }
 
     private func makeExchangeDocument(

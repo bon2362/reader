@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import AppKit
 
 struct LibraryView: View {
     @Bindable var store: LibraryStore
@@ -49,6 +50,15 @@ struct LibraryView: View {
             store.clearSelection()
         }
         .navigationTitle("Библиотека")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: chooseExportDirectoryAndStart) {
+                    Label("Экспортировать всё", systemImage: store.isExportingAnnotations ? "arrow.up.circle.fill" : "square.and.arrow.up")
+                }
+                .disabled(store.isExportingAnnotations)
+                .help(store.isExportingAnnotations ? "Экспорт всех заметок..." : "Экспортировать заметки всех книг")
+            }
+        }
         .onDeleteCommand(perform: requestDeletionOfSelectedBook)
         .fileImporter(
             isPresented: $showImporter,
@@ -88,6 +98,17 @@ struct LibraryView: View {
             Button("OK", role: .cancel) { store.errorMessage = nil }
         } message: {
             Text(store.errorMessage ?? "")
+        }
+        .alert(
+            store.exportFeedback?.title ?? "Экспорт",
+            isPresented: .init(
+                get: { store.exportFeedback != nil },
+                set: { if !$0 { store.exportFeedback = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { store.exportFeedback = nil }
+        } message: {
+            Text(store.exportFeedback?.message ?? "")
         }
         .task { await store.loadBooks() }
     }
@@ -138,6 +159,25 @@ struct LibraryView: View {
                 return
             }
             onOpenTest(latestBook, url)
+        }
+    }
+
+    private func chooseExportDirectoryAndStart() {
+        guard !store.isExportingAnnotations else { return }
+
+        let panel = NSOpenPanel()
+        panel.title = "Выберите папку для экспорта заметок"
+        panel.message = "Приложение создаст markdown-файлы для всех книг с заметками."
+        panel.prompt = "Экспортировать"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+
+        guard panel.runModal() == .OK, let directoryURL = panel.url else { return }
+
+        Task {
+            await store.exportAllAnnotations(to: directoryURL)
         }
     }
 }

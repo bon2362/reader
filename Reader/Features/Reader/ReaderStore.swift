@@ -207,6 +207,11 @@ final class ReaderStore {
     }
 
     func exportAnnotations(to directoryURL: URL) async {
+        guard let currentBook else {
+            errorMessage = "Нет открытой книги для экспорта."
+            return
+        }
+
         isExportingAnnotations = true
         defer { isExportingAnnotations = false }
 
@@ -214,25 +219,22 @@ final class ReaderStore {
             libraryRepository: libraryRepository,
             annotationRepository: annotationRepository
         )
-        let summary = await service.exportAll(to: directoryURL)
+        let result = await service.exportBook(bookId: currentBook.id, to: directoryURL)
 
-        if summary.exportedCount == 0, summary.failedCount > 0 {
-            let failedTitles = summary.results.compactMap { result -> String? in
-                if case .failed = result.status {
-                    return result.title
-                }
-                return nil
-            }
-            errorMessage = failedTitles.isEmpty
-                ? "Не удалось экспортировать заметки."
-                : "Не удалось экспортировать заметки: \(failedTitles.joined(separator: ", "))"
-            return
+        switch result.status {
+        case .exported(let fileURL):
+            exportFeedback = AnnotationExportFeedback(
+                title: "Экспорт завершён",
+                message: "Книга: \(result.title)\nФайл: \(fileURL.path)"
+            )
+        case .skipped:
+            exportFeedback = AnnotationExportFeedback(
+                title: "Экспорт не требуется",
+                message: "У книги \"\(result.title)\" нет заметок для экспорта."
+            )
+        case .failed(let message):
+            errorMessage = "Не удалось экспортировать книгу \"\(result.title)\": \(message)"
         }
-
-        exportFeedback = AnnotationExportFeedback(
-            title: "Экспорт завершён",
-            message: makeExportFeedbackMessage(summary: summary, directoryURL: directoryURL)
-        )
     }
 
     func stickyNoteLocationLabel(for note: PageNote) -> String {
@@ -253,23 +255,6 @@ final class ReaderStore {
         }
     }
 
-    private func makeExportFeedbackMessage(
-        summary: AnnotationExportSummary,
-        directoryURL: URL
-    ) -> String {
-        var lines = ["Папка: \(directoryURL.path)"]
-        lines.append("Экспортировано книг: \(summary.exportedCount)")
-
-        if summary.skippedCount > 0 {
-            lines.append("Пропущено без заметок: \(summary.skippedCount)")
-        }
-
-        if summary.failedCount > 0 {
-            lines.append("Ошибок: \(summary.failedCount)")
-        }
-
-        return lines.joined(separator: "\n")
-    }
 }
 
 // MARK: - EPUBBridgeDelegate

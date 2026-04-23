@@ -220,6 +220,54 @@ struct AnnotationExportServiceTests {
         #expect(markdown.contains("> Page 32"))
     }
 
+    @Test func exportBookExportsOnlyRequestedBook() async throws {
+        let database = try DatabaseManager.inMemory()
+        let libraryRepository = LibraryRepository(database: database)
+        let annotationRepository = AnnotationRepository(database: database)
+        let service = AnnotationExportService(
+            libraryRepository: libraryRepository,
+            annotationRepository: annotationRepository
+        )
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let firstBook = try makeBook(title: "First Book", format: .epub)
+        let secondBook = try makeBook(title: "Second Book", format: .epub)
+        try await libraryRepository.insert(firstBook)
+        try await libraryRepository.insert(secondBook)
+        try await annotationRepository.insertHighlight(
+            Highlight(
+                bookId: firstBook.id,
+                cfiStart: "start-1",
+                cfiEnd: "end-1",
+                color: .yellow,
+                selectedText: "First quote"
+            )
+        )
+        try await annotationRepository.insertHighlight(
+            Highlight(
+                bookId: secondBook.id,
+                cfiStart: "start-2",
+                cfiEnd: "end-2",
+                color: .blue,
+                selectedText: "Second quote"
+            )
+        )
+
+        let result = await service.exportBook(bookId: secondBook.id, to: directory)
+        let exportedFiles = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        let markdown = try String(contentsOf: try #require(exportedFiles.first), encoding: .utf8)
+
+        if case .exported = result.status {
+            #expect(result.bookId == secondBook.id)
+        } else {
+            Issue.record("Expected requested book to export successfully.")
+        }
+        #expect(exportedFiles.count == 1)
+        #expect(markdown.contains("Second quote"))
+        #expect(!markdown.contains("First quote"))
+    }
+
     private func makeBook(title: String, format: BookFormat) throws -> Book {
         let url = try makeBookFile(
             named: UUID().uuidString,

@@ -301,13 +301,6 @@ struct ReaderView: View {
             FloatingIconButton(systemName: "bookmark", help: "Аннотации") {
                 store.annotationPanelStore.toggleVisibility()
             }
-            FloatingIconButton(
-                systemName: store.isExportingAnnotations ? "arrow.up.circle.fill" : "square.and.arrow.up",
-                help: store.isExportingAnnotations ? "Экспорт заметок..." : "Экспорт заметок"
-            ) {
-                chooseExportDirectoryAndStart()
-            }
-            .disabled(store.isExportingAnnotations)
             FloatingIconButton(systemName: "note.text.badge.plus", help: "Sticky-заметка (⌘⇧N)") {
                 store.addStickyNoteForCurrentPage()
             }
