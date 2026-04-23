@@ -4,6 +4,7 @@ private enum LibraryCardLayout {
     static let coverWidth: CGFloat = 140
     static let coverHeight: CGFloat = 200
 }
+
 private struct BookCoverImageView: View {
     let coverPath: String?
     let title: String
@@ -44,13 +45,45 @@ private struct BookCoverImageView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 8)
                     .lineLimit(3)
+                    .truncationMode(.tail)
             }
         }
     }
 }
 
+private struct HighlightedLibraryText: View {
+    let segments: [LibrarySearchTextSegment]
+    let fallbackText: String
+    let font: Font
+    let foregroundColor: Color?
+
+    var body: some View {
+        Text(attributedText)
+            .font(font)
+    }
+
+    private var attributedText: AttributedString {
+        var result = AttributedString()
+
+        for segment in segments.isEmpty ? [LibrarySearchTextSegment(text: fallbackText, isHighlighted: false)] : segments {
+            var part = AttributedString(segment.text)
+            if let foregroundColor {
+                part.foregroundColor = foregroundColor
+            }
+            if segment.isHighlighted {
+                part.backgroundColor = Color.accentColor.opacity(0.28)
+            }
+            result += part
+        }
+
+        return result
+    }
+}
+
 struct BookCardView: View {
     let book: Book
+    let titleSegments: [LibrarySearchTextSegment]
+    let authorSegments: [LibrarySearchTextSegment]
     let isSelected: Bool
     let onSelect: () -> Void
     let onOpen: () -> Void
@@ -93,16 +126,25 @@ struct BookCardView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(book.title)
-                    .font(.system(size: 13, weight: .medium))
+                HighlightedLibraryText(
+                    segments: titleSegments,
+                    fallbackText: book.title,
+                    font: .system(size: 13, weight: .medium),
+                    foregroundColor: nil
+                )
                     .lineLimit(2)
+                    .truncationMode(.tail)
                     .multilineTextAlignment(.leading)
 
                 if let author = book.author, !author.isEmpty {
-                    Text(author)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                    HighlightedLibraryText(
+                        segments: authorSegments,
+                        fallbackText: author,
+                        font: .system(size: 11),
+                        foregroundColor: .secondary
+                    )
                         .lineLimit(1)
+                        .truncationMode(.tail)
                 }
 
                 if book.progress > 0 {

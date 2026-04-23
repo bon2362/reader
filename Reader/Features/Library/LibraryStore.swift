@@ -6,10 +6,16 @@ struct AnnotationImportFeedback: Equatable {
     var message: String
 }
 
+struct LibrarySearchTextSegment: Equatable {
+    let text: String
+    let isHighlighted: Bool
+}
+
 @MainActor
 @Observable
 final class LibraryStore {
     var books: [Book] = []
+    var searchText: String = ""
     var isLoading: Bool = false
     var errorMessage: String?
     var selectedBookID: String?
@@ -138,6 +144,21 @@ final class LibraryStore {
 
     func clearSelection() {
         selectedBookID = nil
+    }
+
+    var displayedBooks: [Book] {
+        let query = normalizedSearchQuery
+        guard !query.isEmpty else {
+            return books
+        }
+
+        return books.filter { book in
+            matchesSearch(book: book, query: query)
+        }
+    }
+
+    func highlightedSegments(for text: String) -> [LibrarySearchTextSegment] {
+        Self.highlightedSegments(in: text, query: normalizedSearchQuery)
     }
 
     func exportAllAnnotations(to directoryURL: URL) async {
@@ -325,5 +346,62 @@ final class LibraryStore {
         }
 
         return repairedBooks
+    }
+
+    private var normalizedSearchQuery: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func matchesSearch(book: Book, query: String) -> Bool {
+        book.title.localizedStandardContains(query)
+        || (book.author?.localizedStandardContains(query) ?? false)
+    }
+
+    static func highlightedSegments(in text: String, query: String) -> [LibrarySearchTextSegment] {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty, !text.isEmpty else {
+            return [LibrarySearchTextSegment(text: text, isHighlighted: false)]
+        }
+
+        var segments: [LibrarySearchTextSegment] = []
+        var cursor = text.startIndex
+
+        while cursor < text.endIndex,
+              let range = text.range(
+                of: trimmedQuery,
+                options: [.caseInsensitive, .diacriticInsensitive],
+                range: cursor..<text.endIndex,
+                locale: .current
+              ) {
+            if cursor < range.lowerBound {
+                segments.append(
+                    LibrarySearchTextSegment(
+                        text: String(text[cursor..<range.lowerBound]),
+                        isHighlighted: false
+                    )
+                )
+            }
+
+            segments.append(
+                LibrarySearchTextSegment(
+                    text: String(text[range]),
+                    isHighlighted: true
+                )
+            )
+            cursor = range.upperBound
+        }
+
+        if cursor < text.endIndex {
+            segments.append(
+                LibrarySearchTextSegment(
+                    text: String(text[cursor..<text.endIndex]),
+                    isHighlighted: false
+                )
+            )
+        }
+
+        return segments.isEmpty
+            ? [LibrarySearchTextSegment(text: text, isHighlighted: false)]
+            : segments
     }
 }

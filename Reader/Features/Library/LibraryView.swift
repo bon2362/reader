@@ -11,32 +11,47 @@ struct LibraryView: View {
     @State private var pendingDeletionBook: Book?
     @State private var securityScopedAnnotationImportURLs: [URL] = []
     @State private var isBookDropTargeted = false
+    @FocusState private var isSearchFocused: Bool
 
     private let columns = [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 20)]
 
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 24) {
-                AddBookCardView {
-                    activeImporter = .book
-                }
+        VStack(spacing: 0) {
+            searchBar
 
-                ForEach(store.books) { book in
-                    BookCardView(
-                        book: book,
-                        isSelected: store.selectedBookID == book.id,
-                        onSelect: { store.selectBook(id: book.id) },
-                        onOpen: {
-                            store.selectBook(id: book.id)
-                            openBook(book)
-                        },
-                        onOpenTest: { openBookTest(book) },
-                        onDelete: { requestDeletion(of: book) }
-                    )
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 24) {
+                    AddBookCardView {
+                        activeImporter = .book
+                    }
+
+                    ForEach(store.displayedBooks) { book in
+                        BookCardView(
+                            book: book,
+                            titleSegments: store.highlightedSegments(for: book.title),
+                            authorSegments: store.highlightedSegments(for: book.author ?? ""),
+                            isSelected: store.selectedBookID == book.id,
+                            onSelect: { store.selectBook(id: book.id) },
+                            onOpen: {
+                                store.selectBook(id: book.id)
+                                openBook(book)
+                            },
+                            onOpenTest: { openBookTest(book) },
+                            onDelete: { requestDeletion(of: book) }
+                        )
+                    }
+
+                    if store.displayedBooks.isEmpty, !trimmedSearchText.isEmpty {
+                        noSearchResultsCard
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(24)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(24)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                clearLibraryFocusAndSelection()
+            }
         }
         .overlay {
             if isBookDropTargeted {
@@ -49,9 +64,6 @@ struct LibraryView: View {
             handleDroppedBookURLs(urls)
         } isTargeted: { isTargeted in
             isBookDropTargeted = isTargeted
-        }
-        .onTapGesture {
-            store.clearSelection()
         }
         .navigationTitle("Библиотека")
         .toolbar {
@@ -162,7 +174,10 @@ struct LibraryView: View {
                 )
             }
         }
-        .task { await store.loadBooks() }
+        .task {
+            await store.loadBooks()
+            isSearchFocused = true
+        }
     }
 
     private var selectedBook: Book? {
@@ -181,6 +196,83 @@ struct LibraryView: View {
         case nil:
             return [.item]
         }
+    }
+
+    private var searchBar: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+
+                TextField("Искать по названию или автору", text: $store.searchText)
+                    .textFieldStyle(.plain)
+                    .focused($isSearchFocused)
+
+                if !store.searchText.isEmpty {
+                    Button {
+                        store.searchText = ""
+                        isSearchFocused = true
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Очистить поиск")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color(NSColor.controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+
+            HStack {
+                Text(searchResultsCaption)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+    }
+
+    private var noSearchResultsCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Ничего не найдено")
+                .font(.system(size: 15, weight: .semibold))
+            Text("Попробуйте изменить запрос по названию или автору.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.primary.opacity(0.04))
+        )
+        .gridCellColumns(columns.count)
+    }
+
+    private var searchResultsCaption: String {
+        let total = store.books.count
+        let visible = store.displayedBooks.count
+        let query = trimmedSearchText
+
+        guard !query.isEmpty else {
+            return "Книг в библиотеке: \(total)"
+        }
+
+        return "Найдено: \(visible) из \(total)"
+    }
+
+    private var trimmedSearchText: String {
+        store.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     @ViewBuilder
@@ -262,6 +354,11 @@ struct LibraryView: View {
     private func requestDeletion(of book: Book) {
         store.selectBook(id: book.id)
         pendingDeletionBook = book
+    }
+
+    private func clearLibraryFocusAndSelection() {
+        isSearchFocused = false
+        store.clearSelection()
     }
 
     private func requestDeletionOfSelectedBook() {

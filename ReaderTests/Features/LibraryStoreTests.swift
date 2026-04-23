@@ -94,6 +94,44 @@ struct LibraryStoreTests {
         #expect(store.selectedBookID == nil)
     }
 
+    @Test func displayedBooksFiltersByTitleAndAuthor() throws {
+        let (store, _, _) = try makeStore()
+        store.books = [
+            Book(title: "Swift Concurrency", author: "Alice Appleseed", filePath: "/a"),
+            Book(title: "Combine Essentials", author: "Bob Reader", filePath: "/b"),
+            Book(title: "Server Side Swift", author: "Charlie", filePath: "/c")
+        ]
+
+        store.searchText = "swift"
+        #expect(store.displayedBooks.map(\.title) == ["Swift Concurrency", "Server Side Swift"])
+
+        store.searchText = "reader"
+        #expect(store.displayedBooks.map(\.title) == ["Combine Essentials"])
+    }
+
+    @Test func displayedBooksReturnsAllForBlankSearch() throws {
+        let (store, _, _) = try makeStore()
+        store.books = [
+            Book(title: "One", filePath: "/one"),
+            Book(title: "Two", filePath: "/two")
+        ]
+
+        store.searchText = "   "
+
+        #expect(store.displayedBooks.map(\.title) == ["One", "Two"])
+    }
+
+    @Test func highlightedSegmentsMarkCaseInsensitiveMatches() throws {
+        let segments = LibraryStore.highlightedSegments(in: "Authoring Authority", query: "auth")
+
+        #expect(segments == [
+            LibrarySearchTextSegment(text: "Auth", isHighlighted: true),
+            LibrarySearchTextSegment(text: "oring ", isHighlighted: false),
+            LibrarySearchTextSegment(text: "Auth", isHighlighted: true),
+            LibrarySearchTextSegment(text: "ority", isHighlighted: false)
+        ])
+    }
+
     @Test func importBookFromMinimalEPUB() async throws {
         let (store, _, _) = try makeStore()
 
