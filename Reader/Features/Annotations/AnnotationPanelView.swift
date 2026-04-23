@@ -4,6 +4,8 @@ struct AnnotationPanelView: View {
     @Bindable var store: AnnotationPanelStore
     let onSelect: (AnnotationListItem) -> Void
     let onClose: () -> Void
+    let onExport: () -> Void
+    let isExporting: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,12 +22,17 @@ struct AnnotationPanelView: View {
             Text("Аннотации")
                 .font(.system(size: 13, weight: .semibold))
             Spacer()
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
+            PanelHeaderIconButton(
+                systemName: isExporting ? "arrow.up.circle.fill" : "square.and.arrow.up",
+                help: isExporting ? "Экспорт заметок..." : "Экспорт заметок этой книги",
+                action: onExport
+            )
+            .disabled(isExporting)
+            PanelHeaderIconButton(
+                systemName: "xmark",
+                help: "Закрыть панель",
+                action: onClose
+            )
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -65,6 +72,26 @@ struct AnnotationPanelView: View {
             }
             .listStyle(.plain)
         }
+    }
+}
+
+private struct PanelHeaderIconButton: View {
+    let systemName: String
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 24, height: 24)
+                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .hoverLift()
     }
 }
 

@@ -37,6 +37,7 @@ struct AnnotationImportServiceTests {
         #expect(stickyNotes.count == 1)
         #expect(highlights.first?.exchangeId == "highlight-1")
         #expect(textNotes.first?.exchangeId == "text-note-1")
+        #expect(textNotes.first?.selectedText == "Selected")
         #expect(stickyNotes.first?.exchangeId == "sticky-note-1")
         #expect(stickyNotes.first?.pageInChapter == 3)
     }

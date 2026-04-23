@@ -208,7 +208,7 @@ struct MarkdownAnnotationDecoder: Sendable {
         case "Text Note":
             let sections = splitVisibleSections(visibleContent)
             return VisibleBody(
-                selectedText: sections["Selected text"],
+                selectedText: normalizeBlockquoteIfNeeded(sections["Selected text"]),
                 noteBody: sections["Note"],
                 pageLabel: nil
             )
@@ -217,7 +217,7 @@ struct MarkdownAnnotationDecoder: Sendable {
             return VisibleBody(
                 selectedText: nil,
                 noteBody: sections["Note"],
-                pageLabel: sections["Location"]
+                pageLabel: normalizeBlockquoteIfNeeded(sections["Location"])
             )
         default:
             return VisibleBody(selectedText: nil, noteBody: nil, pageLabel: nil)
@@ -240,6 +240,28 @@ struct MarkdownAnnotationDecoder: Sendable {
             result[String(normalized[keyRange])] = String(normalized[valueRange]).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         return result
+    }
+
+    private func normalizeBlockquoteIfNeeded(_ value: String?) -> String? {
+        guard let value else { return nil }
+
+        let lines = value
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
+
+        let normalized = lines.map { line in
+            if line.hasPrefix("> ") {
+                return String(line.dropFirst(2))
+            }
+            if line == ">" {
+                return ""
+            }
+            return line
+        }.joined(separator: "\n")
+
+        return normalized.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func decodeBookFormat(_ rawValue: String) throws -> BookFormat {

@@ -1,6 +1,11 @@
 import Foundation
 import Observation
 
+struct AnnotationExportFeedback: Equatable {
+    var title: String
+    var message: String
+}
+
 @MainActor
 @Observable
 final class ReaderStore {
@@ -19,6 +24,8 @@ final class ReaderStore {
     var errorMessage: String?
     var canGoBackFromLink: Bool = false
     var pdfStore: PDFReaderStore?
+    var isExportingAnnotations: Bool = false
+    var exportFeedback: AnnotationExportFeedback?
 
     let tocStore: TOCStore
     let searchStore: SearchStore
@@ -31,7 +38,9 @@ final class ReaderStore {
 
     private var bridge: EPUBBridgeProtocol?
     private let libraryRepository: LibraryRepositoryProtocol
+    private let annotationRepository: AnnotationRepositoryProtocol
     private var hideToolbarTask: Task<Void, Never>?
+    private let annotationLocationFormatter = AnnotationLocationFormatter()
 
     // MARK: - Init
 
@@ -46,6 +55,7 @@ final class ReaderStore {
         stickyNotesStore: StickyNotesStore? = nil
     ) {
         self.libraryRepository = libraryRepository
+        self.annotationRepository = annotationRepository
         self.tocStore = tocStore
         self.searchStore = searchStore
         self.highlightsStore = highlightsStore ?? HighlightsStore(repository: annotationRepository)
@@ -196,6 +206,45 @@ final class ReaderStore {
         bridge?.goBackFromLink()
     }
 
+    func exportAnnotations(to directoryURL: URL) async {
+        guard let currentBook else {
+            errorMessage = "Нет открытой книги для экспорта."
+            return
+        }
+
+        isExportingAnnotations = true
+        defer { isExportingAnnotations = false }
+
+        let service = AnnotationExportService(
+            libraryRepository: libraryRepository,
+            annotationRepository: annotationRepository
+        )
+        let result = await service.exportBook(bookId: currentBook.id, to: directoryURL)
+
+        switch result.status {
+        case .exported(let fileURL):
+            exportFeedback = AnnotationExportFeedback(
+                title: "Экспорт завершён",
+                message: "Книга: \(result.title)\nФайл: \(fileURL.path)"
+            )
+        case .skipped:
+            exportFeedback = AnnotationExportFeedback(
+                title: "Экспорт не требуется",
+                message: "У книги \"\(result.title)\" нет заметок для экспорта."
+            )
+        case .failed(let message):
+            errorMessage = "Не удалось экспортировать книгу \"\(result.title)\": \(message)"
+        }
+    }
+
+    func stickyNoteLocationLabel(for note: PageNote) -> String {
+        annotationLocationFormatter.overlayLabel(
+            for: note,
+            format: currentBook?.format ?? .epub,
+            chapterPageCounts: currentBook?.chapterPageCounts
+        )
+    }
+
     func resetAutoHideToolbar() {
         showToolbar = true
         hideToolbarTask?.cancel()
@@ -205,6 +254,7 @@ final class ReaderStore {
             self?.showToolbar = false
         }
     }
+
 }
 
 // MARK: - EPUBBridgeDelegate

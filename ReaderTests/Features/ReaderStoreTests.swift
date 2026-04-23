@@ -173,11 +173,125 @@ struct ReaderStoreTests {
         #expect(store.currentPageInChapter == 4)
     }
 
+    @Test func stickyNoteLocationLabelUsesGlobalPageWhenCountsAreKnown() async throws {
+        let (store, _, lib, _) = try makeSetup()
+        let book = Book(
+            title: "Test",
+            filePath: "/tmp/test.epub",
+            chapterPageCountsJSON: Book.encodeChapterPageCounts([4, 4, 4, 4, 4, 3, 10]),
+            format: .epub
+        )
+        try await lib.insert(book)
+
+        store.openBook(book, resolvedURL: URL(fileURLWithPath: "/tmp/test.epub"))
+
+        let label = store.stickyNoteLocationLabel(
+            for: PageNote(bookId: book.id, spineIndex: 6, pageInChapter: 8, body: "")
+        )
+
+        #expect(label == "Стр. 32")
+    }
+
     @Test func loadFailureShowsErrorMessage() async throws {
         let (store, bridge, _, _) = try makeSetup()
 
         bridge.delegate?.bridgeDidFailToLoadBook(message: "broken epub")
 
         #expect(store.errorMessage == "broken epub")
+    }
+
+    @Test func exportAnnotationsShowsSuccessFeedback() async throws {
+        let db = try DatabaseManager.inMemory()
+        let lib = LibraryRepository(database: db)
+        let ann = AnnotationRepository(database: db)
+        let store = ReaderStore(libraryRepository: lib, annotationRepository: ann)
+        let bookURL = try makeTemporaryBookFile(named: "export.epub", contents: "book")
+        let book = Book(title: "Export Book", filePath: bookURL.path, format: .epub)
+        let exportDirectory = try makeTemporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: bookURL)
+            try? FileManager.default.removeItem(at: exportDirectory)
+        }
+
+        try await lib.insert(book)
+        try await ann.insertHighlight(
+            Highlight(
+                bookId: book.id,
+                cfiStart: "epubcfi(/6/2)",
+                cfiEnd: "epubcfi(/6/4)",
+                color: .yellow,
+                selectedText: "Quote"
+            )
+        )
+        store.currentBook = book
+
+        await store.exportAnnotations(to: exportDirectory)
+
+        #expect(store.isExportingAnnotations == false)
+        #expect(store.errorMessage == nil)
+        #expect(store.exportFeedback?.title == "Экспорт завершён")
+        #expect(store.exportFeedback?.message.contains("Книга: Export Book") == true)
+    }
+
+    @Test func exportAnnotationsShowsErrorWhenAllExportsFail() async throws {
+        let db = try DatabaseManager.inMemory()
+        let lib = LibraryRepository(database: db)
+        let ann = AnnotationRepository(database: db)
+        let store = ReaderStore(libraryRepository: lib, annotationRepository: ann)
+        let missingPath = "/definitely/missing/\(UUID().uuidString).epub"
+        let book = Book(title: "Broken Export", filePath: missingPath, format: .epub)
+        let exportDirectory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: exportDirectory) }
+
+        try await lib.insert(book)
+        try await ann.insertTextNote(
+            TextNote(
+                bookId: book.id,
+                cfiAnchor: "epubcfi(/6/2)",
+                body: "Body"
+            )
+        )
+        store.currentBook = book
+
+        await store.exportAnnotations(to: exportDirectory)
+
+        #expect(store.isExportingAnnotations == false)
+        #expect(store.exportFeedback == nil)
+        #expect(store.errorMessage?.contains("Broken Export") == true)
+    }
+
+    @Test func exportAnnotationsShowsSkippedFeedbackForBookWithoutAnnotations() async throws {
+        let db = try DatabaseManager.inMemory()
+        let lib = LibraryRepository(database: db)
+        let ann = AnnotationRepository(database: db)
+        let store = ReaderStore(libraryRepository: lib, annotationRepository: ann)
+        let bookURL = try makeTemporaryBookFile(named: "empty.epub", contents: "book")
+        let exportDirectory = try makeTemporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: bookURL)
+            try? FileManager.default.removeItem(at: exportDirectory)
+        }
+
+        let book = Book(title: "Empty Export", filePath: bookURL.path, format: .epub)
+        try await lib.insert(book)
+        store.currentBook = book
+
+        await store.exportAnnotations(to: exportDirectory)
+
+        #expect(store.errorMessage == nil)
+        #expect(store.exportFeedback?.title == "Экспорт не требуется")
+        #expect(store.exportFeedback?.message.contains("нет заметок") == true)
+    }
+
+    private func makeTemporaryDirectory() throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    private func makeTemporaryBookFile(named name: String, contents: String) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-\(name)")
+        try Data(contents.utf8).write(to: url)
+        return url
     }
 }

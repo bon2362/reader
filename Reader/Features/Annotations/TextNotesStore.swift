@@ -93,6 +93,7 @@ final class TextNotesStore {
             bookId: bookId,
             highlightId: highlightId,
             cfiAnchor: selection.cfiStart.hasPrefix("pdf:") ? selection.cfiStart : "\(selection.cfiStart)||\(selection.cfiEnd)",
+            selectedText: selection.text,
             body: trimmed
         )
         do {

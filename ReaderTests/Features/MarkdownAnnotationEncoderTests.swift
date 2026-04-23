@@ -56,7 +56,7 @@ struct MarkdownAnnotationEncoderTests {
 
         **Selected text**
 
-        Important quoted text
+        > Important quoted text
 
         **Note**
 
@@ -78,7 +78,7 @@ struct MarkdownAnnotationEncoderTests {
 
         **Location**
 
-        Chapter 2 · Page 4
+        > Chapter 2 · Page 4
 
         **Note**
 
@@ -155,7 +155,39 @@ struct MarkdownAnnotationEncoderTests {
         )
 
         #expect(markdown.contains("selectedText: \"Line 1 --\\\\> line 2\""))
+        #expect(markdown.contains("> Line 1 --> line 2"))
         #expect(markdown.contains("First line\n\nSecond: line"))
+    }
+
+    @Test func encodesStickyLocationAsBlockquote() throws {
+        let markdown = try encoder.encode(
+            AnnotationExchangeDocument(
+                exportedAt: Date(timeIntervalSince1970: 1_745_323_200),
+                book: AnnotationExchangeBook(
+                    id: "book-1",
+                    title: "Example Book",
+                    author: "Jane Doe",
+                    format: .pdf,
+                    contentHash: "hash-123"
+                ),
+                items: [
+                    AnnotationExchangeItem(
+                        exchangeId: "sticky-note-1",
+                        type: .stickyNote,
+                        anchor: AnnotationExchangeAnchor(
+                            scheme: .page,
+                            value: "17"
+                        ),
+                        createdAt: Date(timeIntervalSince1970: 1_745_320_500),
+                        updatedAt: Date(timeIntervalSince1970: 1_745_320_500),
+                        body: "Remember this section.",
+                        pageLabel: "Chapter 2\nPage 4"
+                    )
+                ]
+            )
+        )
+
+        #expect(markdown.contains("**Location**\n\n> Chapter 2\n> Page 4"))
     }
 
     @Test func throwsForMissingRequiredFields() {

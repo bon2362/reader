@@ -3,6 +3,7 @@ import SwiftUI
 struct StickyNotesOverlayView: View {
     let notes: [PageNote]
     let expandedId: String?
+    let locationLabel: (PageNote) -> String
     let onToggle: (String) -> Void
     let onUpdate: (String, String) -> Void
     let onDelete: (String) -> Void
@@ -41,6 +42,7 @@ struct StickyNotesOverlayView: View {
         )) {
             StickyNotePopover(
                 note: note,
+                locationLabel: locationLabel(note),
                 onUpdate: { onUpdate(note.id, $0) },
                 onDelete: { onDelete(note.id) }
             )
@@ -50,14 +52,21 @@ struct StickyNotesOverlayView: View {
 
 private struct StickyNotePopover: View {
     let note: PageNote
+    let locationLabel: String
     let onUpdate: (String) -> Void
     let onDelete: () -> Void
 
     @State private var text: String
     @FocusState private var focused: Bool
 
-    init(note: PageNote, onUpdate: @escaping (String) -> Void, onDelete: @escaping () -> Void) {
+    init(
+        note: PageNote,
+        locationLabel: String,
+        onUpdate: @escaping (String) -> Void,
+        onDelete: @escaping () -> Void
+    ) {
         self.note = note
+        self.locationLabel = locationLabel
         self.onUpdate = onUpdate
         self.onDelete = onDelete
         _text = State(initialValue: note.body)
@@ -77,7 +86,7 @@ private struct StickyNotePopover: View {
                 }
 
             HStack {
-                Text("Гл. \(note.spineIndex + 1) · стр. \(note.pageInChapter + 1)")
+                Text(locationLabel)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 Spacer()

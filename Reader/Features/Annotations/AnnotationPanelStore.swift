@@ -1,6 +1,52 @@
 import Foundation
 import Observation
 
+struct AnnotationLocationFormatter: Sendable {
+    func globalPage(for note: PageNote, chapterPageCounts: [Int]?) -> Int? {
+        guard let chapterPageCounts, !chapterPageCounts.isEmpty else {
+            return nil
+        }
+        guard note.spineIndex >= 0,
+              note.spineIndex < chapterPageCounts.count,
+              chapterPageCounts.prefix(note.spineIndex).allSatisfy({ $0 > 0 }) else {
+            return nil
+        }
+        return chapterPageCounts.prefix(note.spineIndex).reduce(0, +) + note.pageInChapter + 1
+    }
+
+    func overlayLabel(
+        for note: PageNote,
+        format: BookFormat,
+        chapterPageCounts: [Int]?
+    ) -> String {
+        switch format {
+        case .pdf:
+            return "Стр. \(note.spineIndex + 1)"
+        case .epub:
+            if let globalPage = globalPage(for: note, chapterPageCounts: chapterPageCounts) {
+                return "Стр. \(globalPage)"
+            }
+            return "Гл. \(note.spineIndex + 1) · стр. \(note.pageInChapter + 1)"
+        }
+    }
+
+    func exportLabel(
+        for note: PageNote,
+        format: BookFormat,
+        chapterPageCounts: [Int]?
+    ) -> String {
+        switch format {
+        case .pdf:
+            return "Page \(note.spineIndex + 1)"
+        case .epub:
+            if let globalPage = globalPage(for: note, chapterPageCounts: chapterPageCounts) {
+                return "Page \(globalPage)"
+            }
+            return "Chapter \(note.spineIndex + 1) · Page \(note.pageInChapter + 1)"
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class AnnotationPanelStore {

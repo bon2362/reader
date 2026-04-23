@@ -56,6 +56,9 @@ private struct PDFReaderContentView: View {
                             pageInChapter: 0
                         ),
                         expandedId: readerStore.stickyNotesStore.expandedId,
+                        locationLabel: { note in
+                            readerStore.stickyNoteLocationLabel(for: note)
+                        },
                         onToggle: { id in readerStore.stickyNotesStore.toggleExpand(id: id) },
                         onUpdate: { id, body in
                             Task { await readerStore.stickyNotesStore.updateBody(id: id, body: body) }

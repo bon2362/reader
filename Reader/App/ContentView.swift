@@ -11,7 +11,10 @@ struct ContentView: View {
             let db = try DatabaseManager.onDisk()
             let libraryRepo = LibraryRepository(database: db)
             let annotationRepo = AnnotationRepository(database: db)
-            _libraryStore = State(initialValue: LibraryStore(repository: libraryRepo))
+            _libraryStore = State(initialValue: LibraryStore(
+                repository: libraryRepo,
+                annotationRepository: annotationRepo
+            ))
             _readerStore = State(initialValue: ReaderStore(
                 libraryRepository: libraryRepo,
                 annotationRepository: annotationRepo
