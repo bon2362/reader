@@ -174,6 +174,10 @@ final class PDFReaderStore {
         pdfView?.goToPreviousPage(nil)
     }
 
+    func goToPageNumber(_ pageNumber: Int) {
+        goToPage(pageNumber - 1)
+    }
+
     func addStickyNoteForCurrentPage() {
         let pageIndex = currentPageIndex
         Task { [stickyNotesStore] in

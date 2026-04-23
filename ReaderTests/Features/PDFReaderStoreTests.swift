@@ -307,4 +307,54 @@ struct PDFReaderStoreTests {
 
         #expect(observedPages.isEmpty)
     }
+
+    @Test func goToPageNumberClampsIntoDocumentBounds() async throws {
+        let db = try DatabaseManager.inMemory()
+        let library = LibraryRepository(database: db)
+        let annotations = AnnotationRepository(database: db)
+        let url = try TestPDFFactory.makeTextPDF(
+            pages: ["Page 1", "Page 2", "Page 3"],
+            title: "Three Pages",
+            author: "Tester"
+        )
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let book = Book(
+            title: "Three Pages",
+            author: "Tester",
+            filePath: url.path,
+            lastCFI: "pdf:0",
+            totalPages: 3,
+            currentPage: 1,
+            format: .pdf
+        )
+
+        let store = try PDFReaderStore(
+            book: book,
+            resolvedURL: url,
+            libraryRepository: library,
+            tocStore: TOCStore(),
+            searchStore: SearchStore(),
+            highlightsStore: HighlightsStore(repository: annotations),
+            textNotesStore: TextNotesStore(repository: annotations),
+            stickyNotesStore: StickyNotesStore(repository: annotations),
+            annotationPanelStore: AnnotationPanelStore(
+                highlightsStore: HighlightsStore(repository: annotations),
+                textNotesStore: TextNotesStore(repository: annotations),
+                stickyNotesStore: StickyNotesStore(repository: annotations),
+                tocStore: TOCStore()
+            )
+        )
+
+        store.start()
+        let pdfView = PDFView()
+        store.attachPDFView(pdfView)
+        store.handleDisplayReady(in: pdfView)
+
+        store.goToPageNumber(999)
+        #expect(store.currentPageNumber == 3)
+
+        store.goToPageNumber(-10)
+        #expect(store.currentPageNumber == 1)
+    }
 }

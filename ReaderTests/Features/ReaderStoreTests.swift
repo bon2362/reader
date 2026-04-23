@@ -60,6 +60,12 @@ struct ReaderStoreTests {
         #expect(bridge.prevPageCallCount == 1)
     }
 
+    @Test func goToPageNumberDelegatesToBridge() async throws {
+        let (store, bridge, _, _) = try makeSetup()
+        store.goToPageNumber(17)
+        #expect(bridge.goToPageNumberCalls == [17])
+    }
+
     @Test func pageChangedUpdatesStoreState() async throws {
         let (store, bridge, _, _) = try makeSetup()
         bridge.simulatePageChanged(cfi: "cfi1", spineIndex: 3, currentPage: 47, totalPages: 312)

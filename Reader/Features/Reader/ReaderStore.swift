@@ -197,6 +197,14 @@ final class ReaderStore {
         bridge?.prevPage()
     }
 
+    func goToPageNumber(_ pageNumber: Int) {
+        if let pdfStore {
+            pdfStore.goToPageNumber(pageNumber)
+            return
+        }
+        bridge?.goToPageNumber(pageNumber)
+    }
+
     func goBackFromLink() {
         if let pdfStore {
             pdfStore.goBack()

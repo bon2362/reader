@@ -4,11 +4,16 @@ struct PDFReaderView: View {
     @Bindable var readerStore: ReaderStore
     let book: Book
     let resolvedURL: URL
+    let onFinishPageEditing: () -> Void
 
     var body: some View {
         Group {
             if let store = readerStore.pdfStore {
-                PDFReaderContentView(readerStore: readerStore, store: store)
+                PDFReaderContentView(
+                    readerStore: readerStore,
+                    store: store,
+                    onFinishPageEditing: onFinishPageEditing
+                )
             } else {
                 ProgressView("Открываем PDF…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -23,6 +28,7 @@ struct PDFReaderView: View {
 private struct PDFReaderContentView: View {
     @Bindable var readerStore: ReaderStore
     @Bindable var store: PDFReaderStore
+    let onFinishPageEditing: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -86,7 +92,13 @@ private struct PDFReaderContentView: View {
                         PageIndicator(
                             currentPage: store.currentPageNumber,
                             totalPages: store.totalPages,
-                            isReady: true
+                            isReady: true,
+                            onSubmitPage: { pageNumber in
+                                store.goToPageNumber(pageNumber)
+                            },
+                            onFinishEditing: {
+                                onFinishPageEditing()
+                            }
                         )
                         .padding(.bottom, 14)
                     }

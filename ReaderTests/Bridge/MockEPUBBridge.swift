@@ -20,6 +20,7 @@ final class MockEPUBBridge: EPUBBridgeProtocol {
     var setAnnotationsCalls: [[AnnotationAnchor]] = []
     var goToSpineCalls: [Int] = []
     var goToSpinePageCalls: [(index: Int, pageInChapter: Int)] = []
+    var goToPageNumberCalls: [Int] = []
 
     func ping() { pingCallCount += 1 }
     func loadBook(url: URL) { loadBookCalls.append(url) }
@@ -39,6 +40,7 @@ final class MockEPUBBridge: EPUBBridgeProtocol {
     func goToSpine(index: Int, pageInChapter: Int) {
         goToSpinePageCalls.append((index, pageInChapter))
     }
+    func goToPageNumber(_ pageNumber: Int) { goToPageNumberCalls.append(pageNumber) }
     var setCachedChapterPageCountsCalls: [[Int]] = []
     func setCachedChapterPageCounts(_ counts: [Int]) { setCachedChapterPageCountsCalls.append(counts) }
     var setPendingInitialCFICalls: [String?] = []

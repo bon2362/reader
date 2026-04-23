@@ -266,6 +266,31 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
         loadChapter(at: index, restorePage: max(0, pageInChapter))
     }
 
+    func goToPageNumber(_ pageNumber: Int) {
+        guard let book, !book.chapters.isEmpty else { return }
+
+        let zeroBasedTarget = max(0, pageNumber - 1)
+        let hasMeasuredAllChapters = chapterPageCounts.count == book.chapters.count
+            && chapterPageCounts.allSatisfy({ $0 > 0 })
+            && preflightComplete
+
+        if hasMeasuredAllChapters {
+            let cappedTarget = min(zeroBasedTarget, max(chapterPageCounts.reduce(0, +) - 1, 0))
+            var runningTotal = 0
+
+            for (chapterIndex, count) in chapterPageCounts.enumerated() {
+                let nextTotal = runningTotal + count
+                if cappedTarget < nextTotal {
+                    loadChapter(at: chapterIndex, restorePage: cappedTarget - runningTotal)
+                    return
+                }
+                runningTotal = nextTotal
+            }
+        }
+
+        evaluate("window.__reader && window.__reader.goToPage(\(zeroBasedTarget));")
+    }
+
     func setCachedChapterPageCounts(_ counts: [Int]) {
         cachedPageCounts = counts
     }

@@ -80,7 +80,8 @@ struct ReaderView: View {
                 PDFReaderView(
                     readerStore: store,
                     book: book,
-                    resolvedURL: resolvedURL
+                    resolvedURL: resolvedURL,
+                    onFinishPageEditing: restoreReaderFocus
                 )
             } else {
                 epubReaderPane
@@ -258,7 +259,13 @@ struct ReaderView: View {
                         PageIndicator(
                             currentPage: store.currentPage,
                             totalPages: store.totalPages,
-                            isReady: store.isPageCountReady
+                            isReady: store.isPageCountReady,
+                            onSubmitPage: { pageNumber in
+                                store.goToPageNumber(pageNumber)
+                            },
+                            onFinishEditing: {
+                                restoreReaderFocus()
+                            }
                         )
                         .padding(.bottom, 14)
                     }
@@ -323,6 +330,12 @@ struct ReaderView: View {
 
         Task {
             await store.exportAnnotations(to: directoryURL)
+        }
+    }
+
+    private func restoreReaderFocus() {
+        DispatchQueue.main.async {
+            isFocused = true
         }
     }
 
