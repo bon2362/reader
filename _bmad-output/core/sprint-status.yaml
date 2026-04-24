@@ -1,5 +1,6 @@
 # generated: 2026-04-24
 # last_updated: 2026-04-24
+# retrospective for iPhone Standalone MVP (epics 1-3) marked done on 2026-04-24
 # project: Reader App
 # project_key: NOKEY
 # tracking_system: file-system
@@ -77,19 +78,19 @@ development_status:
   1-1-iphone-target-from-main-and-local-only-app-shell: done
   1-2-shared-local-core-extraction-for-iphone-reuse: done
   1-3-local-persistence-boot-for-iphone: done
-  epic-1-iphone-standalone-foundation-retrospective: optional
+  epic-1-iphone-standalone-foundation-retrospective: done
 
   epic-2-local-pdf-library-and-reader: done
   2-1-local-pdf-import-on-iphone: done
   2-2-local-library-ux-for-standalone-iphone-use: done
   2-3-iphone-pdf-reader-and-resume: done
-  epic-2-local-pdf-library-and-reader-retrospective: optional
+  epic-2-local-pdf-library-and-reader-retrospective: done
 
   epic-3-local-highlights-and-mvp-polish: done
   3-1-local-highlight-creation-and-persistence: done
   3-2-highlight-reloading-rendering-and-deletion: done
   3-3-standalone-stability-edge-cases-and-guardrails: done
-  epic-3-local-highlights-and-mvp-polish-retrospective: optional
+  epic-3-local-highlights-and-mvp-polish-retrospective: done
 
   # ─── Future CloudKit sync (post-MVP, ready-for-dev) ───
   epic-4-future-cloudkit-sync-layer: backlog
