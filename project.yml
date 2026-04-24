@@ -7,6 +7,7 @@ options:
   bundleIdPrefix: com.koshkin
   deploymentTarget:
     macOS: "14.0"
+    iOS: "17.0"
   xcodeVersion: "16.0"
   createIntermediateGroups: true
 
@@ -49,6 +50,47 @@ targets:
     scheme:
       testTargets:
         - ReaderTests
+
+  ReaderiPhone:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Reader/Database
+      - path: Reader/Features/Library/LibraryRepository.swift
+      - path: Reader/Features/Library/BookImporter.swift
+      - path: Reader/Features/Annotations/AnnotationRepository.swift
+      - path: Reader/Features/Annotations/HighlightsStore.swift
+      - path: Reader/Features/PDFReader/PDFBookLoader.swift
+      - path: Reader/Features/PDFReader/PDFAnchor.swift
+      - path: Reader/Features/PDFReader/PDFSelectionAnchorResolver.swift
+      - path: Reader/Features/PDFReader/PDFHighlightRenderer.swift
+      - path: Reader/Features/PDFReader/PDFReadingProgress.swift
+      - path: Reader/Features/PDFReader/PDFMarkupGeometry.swift
+      - path: Reader/Shared
+      - path: ReaderiPhone
+        excludes:
+          - "**/*.md"
+    resources:
+      - path: Reader/Resources/Assets.xcassets
+    dependencies:
+      - package: GRDB
+      - package: ZIPFoundation
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.koshkin.readeriphone
+        PRODUCT_NAME: "slow reader iPhone"
+        PRODUCT_MODULE_NAME: ReaderiPhone
+        SWIFT_VERSION: "6.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "slow reader iPhone"
+        INFOPLIST_KEY_CFBundleName: "slow reader iPhone"
+        INFOPLIST_KEY_UIFileSharingEnabled: YES
+        INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
+        INFOPLIST_KEY_NSDocumentsFolderUsageDescription: "slow reader открывает PDF-файлы из выбранного места."
+        TARGETED_DEVICE_FAMILY: "1"
 
   ReaderTests:
     type: bundle.unit-test

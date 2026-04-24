@@ -6,6 +6,28 @@ import Foundation
 @MainActor
 struct HighlightsStoreTests {
 
+    private struct FailingAnnotationRepository: AnnotationRepositoryProtocol {
+        enum Failure: Error {
+            case expected
+        }
+
+        func fetchHighlights(bookId: String) async throws -> [Highlight] { throw Failure.expected }
+        func fetchHighlight(bookId: String, exchangeId: String) async throws -> Highlight? { throw Failure.expected }
+        func insertHighlight(_ h: Highlight) async throws { throw Failure.expected }
+        func updateHighlight(_ h: Highlight) async throws { throw Failure.expected }
+        func deleteHighlight(id: String) async throws { throw Failure.expected }
+        func fetchTextNotes(bookId: String) async throws -> [TextNote] { throw Failure.expected }
+        func fetchTextNote(bookId: String, exchangeId: String) async throws -> TextNote? { throw Failure.expected }
+        func insertTextNote(_ n: TextNote) async throws { throw Failure.expected }
+        func updateTextNote(_ n: TextNote) async throws { throw Failure.expected }
+        func deleteTextNote(id: String) async throws { throw Failure.expected }
+        func fetchPageNotes(bookId: String) async throws -> [PageNote] { throw Failure.expected }
+        func fetchPageNote(bookId: String, exchangeId: String) async throws -> PageNote? { throw Failure.expected }
+        func insertPageNote(_ n: PageNote) async throws { throw Failure.expected }
+        func updatePageNote(_ n: PageNote) async throws { throw Failure.expected }
+        func deletePageNote(id: String) async throws { throw Failure.expected }
+    }
+
     private func setup() throws -> (HighlightsStore, MockEPUBBridge, AnnotationRepository, LibraryRepository, Book) {
         let db = try DatabaseManager.inMemory()
         let ann = AnnotationRepository(database: db)
@@ -69,6 +91,48 @@ struct HighlightsStoreTests {
         #expect(bridge.highlightCalls.count == 1)
         #expect(bridge.highlightCalls[0].id == h.id)
         #expect(bridge.highlightCalls[0].color == .blue)
+    }
+
+    @Test func externalRendererPathLoadsAndRendersHighlights() async throws {
+        let db = try DatabaseManager.inMemory()
+        let ann = AnnotationRepository(database: db)
+        let lib = LibraryRepository(database: db)
+        let book = Book(title: "PDF", filePath: "/tmp/test.pdf", format: .pdf)
+        try await lib.insert(book)
+
+        let existing = Highlight(bookId: book.id, cfiStart: "pdf:1|0-5", cfiEnd: "pdf:1|0-5", color: .green, selectedText: "quote")
+        try await ann.insertHighlight(existing)
+
+        let store = HighlightsStore(repository: ann)
+        var renderedIDs: [String] = []
+        store.bindExternalRenderer(
+            render: { highlight in
+                renderedIDs.append(highlight.id)
+            },
+            remove: { _ in }
+        )
+
+        await store.loadAndRender(bookId: book.id)
+
+        #expect(store.highlights.count == 1)
+        #expect(renderedIDs == [existing.id])
+    }
+
+    @Test func failurePathsSetAndClearErrorMessage() async {
+        let store = HighlightsStore(repository: FailingAnnotationRepository())
+
+        await store.loadAndRender(bookId: "book-1")
+        #expect(store.errorMessage == "Не удалось загрузить хайлайты")
+
+        store.dismissError()
+        #expect(store.errorMessage == nil)
+
+        store.onTextSelected(cfiStart: "a", cfiEnd: "b", text: "quote")
+        await store.applyColor(.yellow)
+        #expect(store.errorMessage == "Не удалось сохранить хайлайт")
+
+        store.dismissError()
+        #expect(store.errorMessage == nil)
     }
 
     @Test func highlightTappedSetsActive() async throws {

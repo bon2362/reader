@@ -1,6 +1,13 @@
-import AppKit
 import Foundation
 import PDFKit
+
+#if canImport(AppKit)
+import AppKit
+private typealias PlatformColor = NSColor
+#elseif canImport(UIKit)
+import UIKit
+private typealias PlatformColor = UIColor
+#endif
 
 @MainActor
 enum PDFHighlightRenderer {
@@ -35,7 +42,16 @@ enum PDFHighlightRenderer {
         }
     }
 
-    private static func nsColor(for color: HighlightColor) -> NSColor {
+    static func highlightID(for annotation: PDFAnnotation) -> String? {
+        guard let contents = annotation.contents,
+              contents.hasPrefix(markerPrefix) else {
+            return nil
+        }
+
+        return String(contents.dropFirst(markerPrefix.count))
+    }
+
+    private static func platformColor(for color: HighlightColor) -> PlatformColor {
         switch color {
         case .yellow: return .systemYellow
         case .red: return .systemRed
@@ -43,5 +59,9 @@ enum PDFHighlightRenderer {
         case .blue: return .systemBlue
         case .purple: return .systemPurple
         }
+    }
+
+    private static func nsColor(for color: HighlightColor) -> PlatformColor {
+        platformColor(for: color)
     }
 }
