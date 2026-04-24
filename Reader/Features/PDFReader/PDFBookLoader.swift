@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import PDFKit
 
@@ -40,7 +39,7 @@ enum PDFBookLoader {
         let title = normalizedTitle(rawTitle, fallbackFilename: filenameTitle)
         let author = normalizedAuthor(rawAuthor)
         let coverData = document.page(at: 0).flatMap { page in
-            pngData(from: page.thumbnail(of: CGSize(width: 400, height: 600), for: .cropBox))
+            ImageDataTransformer.pngData(from: page.thumbnail(of: CGSize(width: 400, height: 600), for: .cropBox))
         }
         let text = document.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
@@ -115,13 +114,5 @@ enum PDFBookLoader {
         guard value.count >= 4, value.first == "<", value.last == ">" else { return false }
         let hex = value.dropFirst().dropLast()
         return !hex.isEmpty && hex.count.isMultiple(of: 2) && hex.allSatisfy(\.isHexDigit)
-    }
-
-    private static func pngData(from image: NSImage) -> Data? {
-        guard let tiff = image.tiffRepresentation,
-              let rep = NSBitmapImageRep(data: tiff) else {
-            return nil
-        }
-        return rep.representation(using: .png, properties: [:])
     }
 }

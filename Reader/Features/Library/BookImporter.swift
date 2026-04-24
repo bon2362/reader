@@ -1,6 +1,5 @@
 import Foundation
 import ZIPFoundation
-import AppKit
 
 struct EPUBMetadata {
     let title: String
@@ -114,16 +113,8 @@ enum BookImporter {
 
     private static func saveCover(data: Data, bookId: String) throws -> String {
         let destination = try FileAccess.coversDir.appendingPathComponent("\(bookId).png")
-
-        if let image = NSImage(data: data),
-           let tiff = image.tiffRepresentation,
-           let rep = NSBitmapImageRep(data: tiff),
-           let png = rep.representation(using: .png, properties: [:]) {
-            try png.write(to: destination)
-        } else {
-            // Fallback: write raw bytes
-            try data.write(to: destination)
-        }
+        let normalizedData = ImageDataTransformer.normalizedPNGData(from: data) ?? data
+        try normalizedData.write(to: destination)
 
         return destination.path
     }

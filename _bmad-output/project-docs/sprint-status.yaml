@@ -1,5 +1,5 @@
-# generated: 2026-04-18
-# last_updated: 2026-04-18
+# generated: 2026-04-24
+# last_updated: 2026-04-24
 # project: Reader App
 # project_key: NOKEY
 # tracking_system: file-system
@@ -34,34 +34,35 @@
 # - Developer typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-04-18
-last_updated: 2026-04-23
+generated: 2026-04-24
+last_updated: 2026-04-24
 project: Reader App
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/stories
 
 development_status:
-  epic-1: done
+  # ─── macOS / EPUB baseline ───
+  epic-1-foundation: done
   1-1-project-initialization: done
   1-2-database-schema: done
-  epic-1-retrospective: optional
+  epic-1-foundation-retrospective: optional
 
-  epic-2: done
+  epic-2-core-reading: done
   2-1-epub-rendering-and-navigation: done
   2-2-library: done
   2-3-table-of-contents: done
   2-4-text-search: done
-  epic-2-retrospective: optional
+  epic-2-core-reading-retrospective: optional
 
-  epic-3: done
+  epic-3-annotations: done
   3-1-highlights: done
   3-2-text-notes-type-a: done
   3-3-sticky-notes-type-b: done
   3-4-annotation-panel: done
-  epic-3-retrospective: optional
+  epic-3-annotations-retrospective: optional
 
-  epic-4: done
+  epic-4-annotation-markdown-exchange: done
   4-1-schema-support-for-exchange-id: done
   4-2-repository-support-for-exchange-lookup: done
   4-3-markdown-exchange-domain-model: done
@@ -69,4 +70,35 @@ development_status:
   4-5-library-wide-export-flow: done
   4-6-markdown-import-preview: done
   4-7-import-apply-with-per-book-transaction: done
-  epic-4-retrospective: done
+  epic-4-annotation-markdown-exchange-retrospective: done
+
+  # ─── iPhone Standalone MVP (current track) ───
+  epic-1-iphone-standalone-foundation: done
+  1-1-iphone-target-from-main-and-local-only-app-shell: done
+  1-2-shared-local-core-extraction-for-iphone-reuse: done
+  1-3-local-persistence-boot-for-iphone: done
+  epic-1-iphone-standalone-foundation-retrospective: optional
+
+  epic-2-local-pdf-library-and-reader: done
+  2-1-local-pdf-import-on-iphone: done
+  2-2-local-library-ux-for-standalone-iphone-use: done
+  2-3-iphone-pdf-reader-and-resume: done
+  epic-2-local-pdf-library-and-reader-retrospective: optional
+
+  epic-3-local-highlights-and-mvp-polish: done
+  3-1-local-highlight-creation-and-persistence: done
+  3-2-highlight-reloading-rendering-and-deletion: done
+  3-3-standalone-stability-edge-cases-and-guardrails: done
+  epic-3-local-highlights-and-mvp-polish-retrospective: optional
+
+  # ─── Future CloudKit sync (post-MVP, ready-for-dev) ───
+  epic-4-future-cloudkit-sync-layer: backlog
+  4-1-sync-extension-contracts-on-top-of-local-core: ready-for-dev
+  4-2-cloudkit-book-catalog-and-asset-sync: ready-for-dev
+  4-3-predictable-progress-sync-policy: ready-for-dev
+  4-4-cross-device-highlight-sync-and-conflict-handling: ready-for-dev
+
+  # ─── Cancelled: original sync-first direction ───
+  # Superseded by sprint-change-proposal-2026-04-24.md.
+  # Story files retained under _bmad-output/stories/ for reference.
+  # epic-1-sync-foundation, epic-2-iphone-reader-client, epic-3-cross-device-highlights

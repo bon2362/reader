@@ -18,7 +18,9 @@ final class HighlightsStore {
     var errorMessage: String?
 
     private let repository: AnnotationRepositoryProtocol
+#if os(macOS)
     private weak var bridge: EPUBBridgeProtocol?
+#endif
     private var bookId: String?
     private var externalRender: (@MainActor (Highlight) -> Void)?
     private var externalRemove: (@MainActor (String) -> Void)?
@@ -27,17 +29,21 @@ final class HighlightsStore {
         self.repository = repository
     }
 
+#if os(macOS)
     func bindBridge(_ bridge: EPUBBridgeProtocol) {
         self.bridge = bridge
         externalRender = nil
         externalRemove = nil
     }
+#endif
 
     func bindExternalRenderer(
         render: @escaping @MainActor (Highlight) -> Void,
         remove: @escaping @MainActor (String) -> Void
     ) {
+#if os(macOS)
         bridge = nil
+#endif
         externalRender = render
         externalRemove = remove
     }
@@ -49,6 +55,7 @@ final class HighlightsStore {
         do {
             let loaded = try await repository.fetchHighlights(bookId: bookId)
             highlights = loaded
+            errorMessage = nil
             for h in loaded {
                 renderOnBridge(h)
             }
@@ -62,8 +69,13 @@ final class HighlightsStore {
         pendingSelection = nil
         activeHighlightId = nil
         bookId = nil
+#if os(macOS)
         externalRender = nil
         externalRemove = nil
+#else
+        externalRender = nil
+        externalRemove = nil
+#endif
     }
 
     // MARK: - Selection flow
@@ -102,6 +114,7 @@ final class HighlightsStore {
             highlights.append(highlight)
             renderOnBridge(highlight)
             pendingSelection = nil
+            errorMessage = nil
         } catch {
             errorMessage = "Не удалось сохранить хайлайт"
         }
@@ -124,9 +137,12 @@ final class HighlightsStore {
         do {
             try await repository.updateHighlight(updated)
             highlights[idx] = updated
+#if os(macOS)
             bridge?.removeHighlight(id: id)
+#endif
             externalRemove?(id)
             renderOnBridge(updated)
+            errorMessage = nil
         } catch {
             errorMessage = "Не удалось обновить хайлайт"
         }
@@ -137,12 +153,19 @@ final class HighlightsStore {
         do {
             try await repository.deleteHighlight(id: id)
             highlights.removeAll { $0.id == id }
+#if os(macOS)
             bridge?.removeHighlight(id: id)
+#endif
             externalRemove?(id)
             activeHighlightId = nil
+            errorMessage = nil
         } catch {
             errorMessage = "Не удалось удалить хайлайт"
         }
+    }
+
+    func dismissError() {
+        errorMessage = nil
     }
 
     // MARK: - Helpers
@@ -153,7 +176,9 @@ final class HighlightsStore {
     }
 
     private func renderOnBridge(_ h: Highlight) {
+#if os(macOS)
         bridge?.highlightRange(cfiStart: h.cfiStart, cfiEnd: h.cfiEnd, color: h.color, id: h.id)
+#endif
         externalRender?(h)
     }
 }
