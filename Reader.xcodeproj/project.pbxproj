@@ -217,12 +217,12 @@
 		78BADEEDEC70998312560A24 /* StickyNotesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyNotesStore.swift; sourceTree = "<group>"; };
 		7969EE13287B12303C665F47 /* EPUBTestLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBTestLoader.swift; sourceTree = "<group>"; };
 		7B6E1919B8DFEFFDB7590A45 /* PDFReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFReaderView.swift; sourceTree = "<group>"; };
-		7D1BE4C99722DBE37CC537AA /* slow reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "slow reader.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		7D1BE4C99722DBE37CC537AA /* Reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Reader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		821E5269A52D7E4B1682ED3A /* TOCEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOCEntry.swift; sourceTree = "<group>"; };
 		83874436AEE81A12B0BE9276 /* HighlightsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightsStore.swift; sourceTree = "<group>"; };
 		843BAC312A75DF302C35E6D9 /* AnnotationListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationListItem.swift; sourceTree = "<group>"; };
 		8571CCDB6C9B1D98AA266D9F /* PDFReaderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFReaderStore.swift; sourceTree = "<group>"; };
-		87F235FF814E01A7237E7EF6 /* slow reader iPhone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "slow reader iPhone.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		87F235FF814E01A7237E7EF6 /* ReaderiPhone.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ReaderiPhone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8CCB8950AC5E861500083538 /* HighlightsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightsStoreTests.swift; sourceTree = "<group>"; };
 		8F1274DFE38D2882C3247F32 /* Highlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Highlight.swift; sourceTree = "<group>"; };
 		8F88AD9B24ECD53937F58A66 /* MarkdownAnnotationDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownAnnotationDecoder.swift; sourceTree = "<group>"; };
@@ -271,7 +271,7 @@
 		F5F9650073D4868FD3842D12 /* IPhoneLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneLibraryView.swift; sourceTree = "<group>"; };
 		F6FFD7F892C96C42E5BFC59A /* PageNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageNote.swift; sourceTree = "<group>"; };
 		FADF34C3BC64D4841605BC39 /* Migration_002.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migration_002.swift; sourceTree = "<group>"; };
-		FE0088B555A2D8F1C3200A2F /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
+		FE0088B555A2D8F1C3200A2F /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		FFAA70F8A14B9D0061036F99 /* StickyNotesOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyNotesOverlayView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -491,8 +491,8 @@
 		A97F85522AF62C54C5BF2D39 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				7D1BE4C99722DBE37CC537AA /* slow reader.app */,
-				87F235FF814E01A7237E7EF6 /* slow reader iPhone.app */,
+				7D1BE4C99722DBE37CC537AA /* Reader.app */,
+				87F235FF814E01A7237E7EF6 /* ReaderiPhone.app */,
 				68FE5DFA26167FF456F60EA0 /* ReaderTests.xctest */,
 			);
 			name = Products;
@@ -667,7 +667,7 @@
 				4E62809B08F0408E5D427EE5 /* ZIPFoundation */,
 			);
 			productName = Reader;
-			productReference = 7D1BE4C99722DBE37CC537AA /* slow reader.app */;
+			productReference = 7D1BE4C99722DBE37CC537AA /* Reader.app */;
 			productType = "com.apple.product-type.application";
 		};
 		8ADE29F44F1D9A93E9A51ACA /* ReaderiPhone */ = {
@@ -687,7 +687,7 @@
 				A9AC79CB504D6E6F452EE45A /* ZIPFoundation */,
 			);
 			productName = ReaderiPhone;
-			productReference = 87F235FF814E01A7237E7EF6 /* slow reader iPhone.app */;
+			productReference = 87F235FF814E01A7237E7EF6 /* ReaderiPhone.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -697,7 +697,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					4FF2F419C3D2B210459D9DF7 = {
 						ProvisioningStyle = Automatic;
@@ -915,10 +915,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 7QU9B38DLA;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "slow reader iPhone";
 				INFOPLIST_KEY_CFBundleName = "slow reader iPhone";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "slow reader открывает PDF-файлы из выбранного места.";
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -938,7 +940,6 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -959,7 +960,6 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1009,11 +1009,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -1034,7 +1032,6 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -1047,10 +1044,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 7QU9B38DLA;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "slow reader iPhone";
 				INFOPLIST_KEY_CFBundleName = "slow reader iPhone";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "slow reader открывает PDF-файлы из выбранного места.";
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1099,11 +1098,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -1117,7 +1114,6 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -1130,7 +1126,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "slow reader";
@@ -1154,7 +1149,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "slow reader";

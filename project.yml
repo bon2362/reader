@@ -87,6 +87,9 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "slow reader iPhone"
         INFOPLIST_KEY_CFBundleName: "slow reader iPhone"
+        INFOPLIST_KEY_UIFileSharingEnabled: YES
+        INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
+        INFOPLIST_KEY_NSDocumentsFolderUsageDescription: "slow reader открывает PDF-файлы из выбранного места."
         TARGETED_DEVICE_FAMILY: "1"
 
   ReaderTests:

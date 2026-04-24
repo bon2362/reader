@@ -50,10 +50,12 @@ final class IPhonePDFReaderStore {
             pdfView.document = document
         }
         highlightsStore.bindExternalRenderer(
-            render: { highlight in
+            render: { [weak self] highlight in
+                guard let self, let pdfView = self.pdfView else { return }
                 PDFHighlightRenderer.apply(highlight: highlight, in: pdfView)
             },
-            remove: { id in
+            remove: { [weak self] id in
+                guard let self, let pdfView = self.pdfView else { return }
                 PDFHighlightRenderer.remove(highlightID: id, in: pdfView)
             }
         )
@@ -117,12 +119,18 @@ final class IPhonePDFReaderStore {
         }
 
         let anchor = makeAnchor(for: selection, on: page, pageIndex: pageIndex)
+        let rect = pdfView.convert(selection.bounds(for: page), from: page)
+        if let existing = highlightsStore.highlights.first(where: { $0.cfiStart == anchor.stringValue }) {
+            highlightsStore.onHighlightTapped(id: existing.id)
+            highlightsStore.updateSelectionRect(rect)
+            return
+        }
         highlightsStore.onTextSelected(
             cfiStart: anchor.stringValue,
             cfiEnd: anchor.stringValue,
             text: text
         )
-        highlightsStore.updateSelectionRect(pdfView.convert(selection.bounds(for: page), from: page))
+        highlightsStore.updateSelectionRect(rect)
     }
 
     func handleHighlightTap(id: String) {
