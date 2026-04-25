@@ -76,13 +76,13 @@ final class IPhoneLibraryStore {
         let localURL = URL(fileURLWithPath: book.filePath)
 
         guard FileManager.default.fileExists(atPath: localURL.path) else {
-            errorMessage = "Локальный PDF не найден на этом iPhone."
+            errorMessage = "Файл книги не найден на этом iPhone."
             await load()
             return nil
         }
 
         guard FileManager.default.isReadableFile(atPath: localURL.path) else {
-            errorMessage = "Локальный PDF недоступен для чтения."
+            errorMessage = "Файл книги недоступен для чтения."
             await load()
             return nil
         }

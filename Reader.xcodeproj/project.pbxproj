@@ -151,6 +151,7 @@
 		AA000002000000000000AA02 /* IPhoneEPUBWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000003000000000000AA03 /* IPhoneEPUBWebView.swift */; };
 		AA000004000000000000AA04 /* IPhoneEPUBReaderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000005000000000000AA05 /* IPhoneEPUBReaderStore.swift */; };
 		AA000006000000000000AA06 /* IPhoneEPUBReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000007000000000000AA07 /* IPhoneEPUBReaderView.swift */; };
+		AA000008000000000000AA08 /* BridgeTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAFBAF0642BDFF843D5A322D /* BridgeTypes.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -875,6 +876,7 @@
 				AA000002000000000000AA02 /* IPhoneEPUBWebView.swift in Sources */,
 				AA000004000000000000AA04 /* IPhoneEPUBReaderStore.swift in Sources */,
 				AA000006000000000000AA06 /* IPhoneEPUBReaderView.swift in Sources */,
+				AA000008000000000000AA08 /* BridgeTypes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

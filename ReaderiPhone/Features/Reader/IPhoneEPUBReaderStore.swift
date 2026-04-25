@@ -55,25 +55,27 @@ final class IPhoneEPUBReaderStore {
     }
 
     func goToNextPage() {
-        Task {
-            guard let webView else { return }
-            guard let result = await evaluatePageTurn(webView: webView, call: "nextPage()") else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            guard let webView = self.webView else { return }
+            guard let result = await self.evaluatePageTurn(webView: webView, call: "nextPage()") else { return }
             if result.didMove {
-                syncPage(result.after, total: result.totalPages)
+                self.syncPage(result.after, total: result.totalPages)
             } else if result.after >= result.totalPages - 1 {
-                advanceChapter(by: 1)
+                self.advanceChapter(by: 1)
             }
         }
     }
 
     func goToPreviousPage() {
-        Task {
-            guard let webView else { return }
-            guard let result = await evaluatePageTurn(webView: webView, call: "prevPage()") else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            guard let webView = self.webView else { return }
+            guard let result = await self.evaluatePageTurn(webView: webView, call: "prevPage()") else { return }
             if result.didMove {
-                syncPage(result.after, total: result.totalPages)
+                self.syncPage(result.after, total: result.totalPages)
             } else if result.after == 0 {
-                advanceChapter(by: -1)
+                self.advanceChapter(by: -1)
             }
         }
     }
@@ -147,12 +149,16 @@ final class IPhoneEPUBReaderStore {
         guard let epub = epubBook, epub.chapters.indices.contains(currentChapterIndex) else { return }
         let href = EPUBBook.normalizeHref(epub.chapters[currentChapterIndex].href)
         let cfi = EPUBBook.makePageAnchor(href: href, page: pageInChapter)
+        let bookID = book.id
+        let repo = libraryRepository
+        let chapterNumber = currentChapterIndex + 1
+        let chapterCount = epub.chapters.count
         Task {
-            try? await libraryRepository.updateReadingProgress(
-                id: book.id,
+            try? await repo.updateReadingProgress(
+                id: bookID,
                 lastCFI: cfi,
-                currentPage: currentChapterIndex + 1,
-                totalPages: epub.chapters.count
+                currentPage: chapterNumber,
+                totalPages: chapterCount
             )
         }
     }
