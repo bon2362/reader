@@ -1,21 +1,29 @@
 import SwiftUI
 
 struct IPhoneEPUBReaderView: View {
-    @State private var store: IPhoneEPUBReaderStore?
+    // Store создаётся в init — до первого рендера, чтобы makeUIView
+    // успел вызвать attachWebView до того, как .task запустит load().
+    @State private var store: IPhoneEPUBReaderStore
     @State private var loadError: String?
 
-    private let openedBook: IPhoneOpenedBook
-    private let libraryRepository: LibraryRepositoryProtocol
-
     init(openedBook: IPhoneOpenedBook, libraryRepository: LibraryRepositoryProtocol) {
-        self.openedBook = openedBook
-        self.libraryRepository = libraryRepository
+        _store = State(initialValue: IPhoneEPUBReaderStore(
+            book: openedBook.book,
+            resolvedURL: openedBook.url,
+            libraryRepository: libraryRepository
+        ))
     }
 
     var body: some View {
-        Group {
-            if let store {
-                readerBody(store: store)
+        ZStack(alignment: .bottom) {
+            Color(UIColor.systemBackground).ignoresSafeArea()
+            IPhoneEPUBWebView(store: store)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if store.isLoading {
+                ProgressView("Загрузка...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(UIColor.systemBackground))
             } else if let error = loadError {
                 ContentUnavailableView(
                     "Не удалось открыть книгу",
@@ -23,38 +31,21 @@ struct IPhoneEPUBReaderView: View {
                     description: Text(error)
                 )
             } else {
-                ProgressView("Загрузка...")
+                pageControls
             }
         }
-        .navigationTitle(openedBook.book.title)
+        .navigationTitle(store.bookTitle)
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            let s = IPhoneEPUBReaderStore(
-                book: openedBook.book,
-                resolvedURL: openedBook.url,
-                libraryRepository: libraryRepository
-            )
-            store = s
-            await s.load()
-            if let msg = s.errorMessage {
+            await store.load()
+            if let msg = store.errorMessage {
                 loadError = msg
-                store = nil
             }
         }
     }
 
     @ViewBuilder
-    private func readerBody(store: IPhoneEPUBReaderStore) -> some View {
-        VStack(spacing: 0) {
-            IPhoneEPUBWebView(store: store)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            pageControls(store: store)
-        }
-    }
-
-    @ViewBuilder
-    private func pageControls(store: IPhoneEPUBReaderStore) -> some View {
+    private var pageControls: some View {
         HStack {
             Button {
                 store.goToPreviousPage()

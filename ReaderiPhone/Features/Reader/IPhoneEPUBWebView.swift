@@ -23,8 +23,12 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
         context.coordinator.handler = handler
 
         let webView = WKWebView(frame: .zero, configuration: config)
+        // Прозрачный WebView — SwiftUI-контейнер (.systemBackground) даёт фон.
+        // Иначе в тёмном режиме WKWebView рисует чёрный фон, а текст EPUB
+        // (color: black из EPUB CSS) становится невидимым.
         webView.isOpaque = false
-        webView.backgroundColor = .systemBackground
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = false
         webView.allowsBackForwardNavigationGestures = false
         if #available(iOS 16.4, *) { webView.isInspectable = true }
@@ -96,7 +100,7 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 '@media (prefers-color-scheme: dark) { mark.reader-note { border-bottom-color: rgba(255, 200, 80, 0.85); } }',
                 'a { color: inherit; text-decoration: underline; }',
                 'p { orphans: 2; widows: 2; }',
-                '@media (prefers-color-scheme: dark) { html, body { color: #e0e0e0; } }'
+                '@media (prefers-color-scheme: dark) { html, body { background: #1a1a1a !important; color: #e0e0e0 !important; } * { color: inherit; } }'
             ].join('');
             document.head.appendChild(style);
 

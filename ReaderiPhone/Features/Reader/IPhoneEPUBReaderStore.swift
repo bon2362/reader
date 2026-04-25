@@ -11,6 +11,7 @@ final class IPhoneEPUBReaderStore {
     var isLoading: Bool = true
     var errorMessage: String?
 
+    let bookTitle: String
     private let book: Book
     private let bookURL: URL
     private let libraryRepository: LibraryRepositoryProtocol
@@ -25,6 +26,7 @@ final class IPhoneEPUBReaderStore {
         libraryRepository: LibraryRepositoryProtocol
     ) {
         self.book = book
+        self.bookTitle = book.title
         self.bookURL = resolvedURL
         self.libraryRepository = libraryRepository
     }
