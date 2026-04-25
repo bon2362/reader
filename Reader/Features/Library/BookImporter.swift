@@ -21,7 +21,7 @@ enum BookImporterError: LocalizedError {
         case .missingContainer:  return "EPUB повреждён: отсутствует META-INF/container.xml"
         case .missingOPF:        return "EPUB повреждён: отсутствует .opf файл"
         case .missingTitle:      return "EPUB повреждён: отсутствует заголовок"
-        case .unsupportedFormat: return "Поддерживаются только EPUB и PDF"
+        case .unsupportedFormat: return "Поддерживаются только EPUB, PDF и FB2"
         }
     }
 }
@@ -79,11 +79,16 @@ enum BookImporter {
         using repository: LibraryRepositoryProtocol
     ) async throws -> Book {
         let fileExtension = sourceURL.pathExtension.lowercased()
-        guard fileExtension == BookFormat.epub.rawValue || fileExtension == BookFormat.pdf.rawValue else {
+        guard fileExtension == BookFormat.epub.rawValue
+            || fileExtension == BookFormat.pdf.rawValue
+            || fileExtension == BookFormat.fb2.rawValue else {
             throw BookImporterError.unsupportedFormat
         }
         if fileExtension == BookFormat.pdf.rawValue {
             return try await PDFBookLoader.importPDF(from: sourceURL, using: repository)
+        }
+        if fileExtension == BookFormat.fb2.rawValue {
+            return try await FB2Importer.importFB2(from: sourceURL, using: repository)
         }
 
         let metadata = try parseMetadata(from: sourceURL)

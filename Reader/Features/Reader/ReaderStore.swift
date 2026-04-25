@@ -86,7 +86,7 @@ final class ReaderStore {
     // MARK: - Public API
 
     func openBook(_ book: Book, resolvedURL: URL) {
-        guard book.format == .epub else {
+        guard book.format != .pdf else {
             openPDFBook(book, resolvedURL: resolvedURL)
             return
         }

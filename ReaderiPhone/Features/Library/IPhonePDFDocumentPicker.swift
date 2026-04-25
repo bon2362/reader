@@ -13,7 +13,8 @@ struct IPhonePDFDocumentPicker: UIViewControllerRepresentable {
         let controller = UIDocumentPickerViewController(
             forOpeningContentTypes: [
                 UTType.pdf,
-                UTType(filenameExtension: "epub") ?? .item
+                UTType(filenameExtension: "epub") ?? .item,
+                UTType(filenameExtension: "fb2") ?? .item
             ],
             asCopy: false
         )

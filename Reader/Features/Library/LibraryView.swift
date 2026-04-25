@@ -190,7 +190,7 @@ struct LibraryView: View {
     private var importerAllowedContentTypes: [UTType] {
         switch activeImporter {
         case .book:
-            return [UTType(filenameExtension: "epub") ?? .item, UTType.pdf]
+            return [UTType(filenameExtension: "epub") ?? .item, UTType.pdf, UTType(filenameExtension: "fb2") ?? .item]
         case .annotations:
             return [UTType(filenameExtension: "md") ?? .plainText]
         case nil:
@@ -284,7 +284,7 @@ struct LibraryView: View {
                 VStack(spacing: 10) {
                     Image(systemName: "books.vertical.fill")
                         .font(.system(size: 30, weight: .semibold))
-                    Text("Перетащите EPUB или PDF в библиотеку")
+                    Text("Перетащите EPUB, PDF или FB2 в библиотеку")
                         .font(.system(size: 16, weight: .semibold))
                     Text("Можно добавить сразу несколько книг")
                         .font(.system(size: 12))
@@ -334,7 +334,7 @@ struct LibraryView: View {
     private func handleDroppedBookURLs(_ urls: [URL]) -> Bool {
         let bookURLs = urls.filter(isSupportedBookURL)
         guard !bookURLs.isEmpty else {
-            store.errorMessage = "Поддерживаются только EPUB и PDF"
+            store.errorMessage = "Поддерживаются только EPUB, PDF и FB2"
             return false
         }
 
@@ -348,7 +348,7 @@ struct LibraryView: View {
 
     private func isSupportedBookURL(_ url: URL) -> Bool {
         let ext = url.pathExtension.lowercased()
-        return ext == BookFormat.epub.rawValue || ext == BookFormat.pdf.rawValue
+        return ext == BookFormat.epub.rawValue || ext == BookFormat.pdf.rawValue || ext == BookFormat.fb2.rawValue
     }
 
     private func requestDeletion(of book: Book) {

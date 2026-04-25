@@ -366,7 +366,7 @@ struct ReaderView: View {
         let above = rect.minY - gap - pickerHalfHeight
         let y: CGFloat
         switch format {
-        case .epub, .pdf:
+        case .epub, .pdf, .fb2:
             if below + pickerHalfHeight < size.height - margin {
                 y = below
             } else if above - pickerHalfHeight > margin {

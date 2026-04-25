@@ -51,8 +51,8 @@ final class IPhoneLibraryStore {
 
     func importBook(from url: URL) async {
         let ext = url.pathExtension.lowercased()
-        guard ext == BookFormat.pdf.rawValue || ext == BookFormat.epub.rawValue else {
-            errorMessage = "Поддерживаются только PDF и EPUB файлы."
+        guard ext == BookFormat.pdf.rawValue || ext == BookFormat.epub.rawValue || ext == BookFormat.fb2.rawValue else {
+            errorMessage = "Поддерживаются только PDF, EPUB и FB2 файлы."
             return
         }
 

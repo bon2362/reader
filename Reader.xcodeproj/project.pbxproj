@@ -152,6 +152,14 @@
 		AA000004000000000000AA04 /* IPhoneEPUBReaderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000005000000000000AA05 /* IPhoneEPUBReaderStore.swift */; };
 		AA000006000000000000AA06 /* IPhoneEPUBReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000007000000000000AA07 /* IPhoneEPUBReaderView.swift */; };
 		AA000008000000000000AA08 /* BridgeTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAFBAF0642BDFF843D5A322D /* BridgeTypes.swift */; };
+		D8FCF7F78E5141DD9C75A2FF /* BookContentProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2800492F853C4C85A46FC501 /* BookContentProvider.swift */; };
+		D322653647F04F1B87B63D7F /* BookContentProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2800492F853C4C85A46FC501 /* BookContentProvider.swift */; };
+		3514C05FE45943C7AA3EA854 /* FB2Book.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5995AD5ABD466D92480DCA /* FB2Book.swift */; };
+		8CDB0EA0EBC5432597B02EBC /* FB2Book.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5995AD5ABD466D92480DCA /* FB2Book.swift */; };
+		88449964798F4A708D105E9B /* FB2BookLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C9D23367192469EABEC592E /* FB2BookLoader.swift */; };
+		F2EB1872856C424B8F6EBC6A /* FB2BookLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C9D23367192469EABEC592E /* FB2BookLoader.swift */; };
+		3940B5F270C74034ADA817AB /* FB2Importer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D79BC7181F04C49B82B999B /* FB2Importer.swift */; };
+		DDDF4C122D18406B9A0365EF /* FB2Importer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D79BC7181F04C49B82B999B /* FB2Importer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -222,12 +230,12 @@
 		78BADEEDEC70998312560A24 /* StickyNotesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyNotesStore.swift; sourceTree = "<group>"; };
 		7969EE13287B12303C665F47 /* EPUBTestLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBTestLoader.swift; sourceTree = "<group>"; };
 		7B6E1919B8DFEFFDB7590A45 /* PDFReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFReaderView.swift; sourceTree = "<group>"; };
-		7D1BE4C99722DBE37CC537AA /* Reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Reader.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7D1BE4C99722DBE37CC537AA /* Reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = Reader.app; path = "slow reader.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		821E5269A52D7E4B1682ED3A /* TOCEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOCEntry.swift; sourceTree = "<group>"; };
 		83874436AEE81A12B0BE9276 /* HighlightsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightsStore.swift; sourceTree = "<group>"; };
 		843BAC312A75DF302C35E6D9 /* AnnotationListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationListItem.swift; sourceTree = "<group>"; };
 		8571CCDB6C9B1D98AA266D9F /* PDFReaderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFReaderStore.swift; sourceTree = "<group>"; };
-		87F235FF814E01A7237E7EF6 /* ReaderiPhone.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ReaderiPhone.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		87F235FF814E01A7237E7EF6 /* slow reader iPhone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "slow reader iPhone.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8CCB8950AC5E861500083538 /* HighlightsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightsStoreTests.swift; sourceTree = "<group>"; };
 		8F1274DFE38D2882C3247F32 /* Highlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Highlight.swift; sourceTree = "<group>"; };
 		8F88AD9B24ECD53937F58A66 /* MarkdownAnnotationDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownAnnotationDecoder.swift; sourceTree = "<group>"; };
@@ -276,11 +284,15 @@
 		F5F9650073D4868FD3842D12 /* IPhoneLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneLibraryView.swift; sourceTree = "<group>"; };
 		F6FFD7F892C96C42E5BFC59A /* PageNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageNote.swift; sourceTree = "<group>"; };
 		FADF34C3BC64D4841605BC39 /* Migration_002.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migration_002.swift; sourceTree = "<group>"; };
-		FE0088B555A2D8F1C3200A2F /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		FE0088B555A2D8F1C3200A2F /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		FFAA70F8A14B9D0061036F99 /* StickyNotesOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyNotesOverlayView.swift; sourceTree = "<group>"; };
 		AA000003000000000000AA03 /* IPhoneEPUBWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneEPUBWebView.swift; sourceTree = "<group>"; };
 		AA000005000000000000AA05 /* IPhoneEPUBReaderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneEPUBReaderStore.swift; sourceTree = "<group>"; };
 		AA000007000000000000AA07 /* IPhoneEPUBReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneEPUBReaderView.swift; sourceTree = "<group>"; };
+		2800492F853C4C85A46FC501 /* BookContentProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookContentProvider.swift; sourceTree = "<group>"; };
+		7D5995AD5ABD466D92480DCA /* FB2Book.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FB2Book.swift; sourceTree = "<group>"; };
+		2C9D23367192469EABEC592E /* FB2BookLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FB2BookLoader.swift; sourceTree = "<group>"; };
+		0D79BC7181F04C49B82B999B /* FB2Importer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FB2Importer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -503,7 +515,7 @@
 			isa = PBXGroup;
 			children = (
 				7D1BE4C99722DBE37CC537AA /* Reader.app */,
-				87F235FF814E01A7237E7EF6 /* ReaderiPhone.app */,
+				87F235FF814E01A7237E7EF6 /* slow reader iPhone.app */,
 				68FE5DFA26167FF456F60EA0 /* ReaderTests.xctest */,
 			);
 			name = Products;
@@ -512,6 +524,9 @@
 		AEAA2F30934C29830C1879BD /* Reader */ = {
 			isa = PBXGroup;
 			children = (
+				2800492F853C4C85A46FC501 /* BookContentProvider.swift */,
+				7D5995AD5ABD466D92480DCA /* FB2Book.swift */,
+				2C9D23367192469EABEC592E /* FB2BookLoader.swift */,
 				B6F036F85EB0F18A0CD0EF37 /* EPUBBook.swift */,
 				7969EE13287B12303C665F47 /* EPUBTestLoader.swift */,
 				6CE5C0EF9B87B65500E84011 /* EPUBTestView.swift */,
@@ -546,6 +561,7 @@
 			children = (
 				10E518C11381F178FEA67ABD /* BookCardView.swift */,
 				BC0A60ADA858F9251673AC53 /* BookImporter.swift */,
+				0D79BC7181F04C49B82B999B /* FB2Importer.swift */,
 				32DFB1F12364022072DE72E2 /* LibraryRepository.swift */,
 				EC1485E6EEA2F336CF12D2E4 /* LibraryStore.swift */,
 				662FE7E7AEC63BE9FE536884 /* LibraryView.swift */,
@@ -698,7 +714,7 @@
 				A9AC79CB504D6E6F452EE45A /* ZIPFoundation */,
 			);
 			productName = ReaderiPhone;
-			productReference = 87F235FF814E01A7237E7EF6 /* ReaderiPhone.app */;
+			productReference = 87F235FF814E01A7237E7EF6 /* slow reader iPhone.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -774,10 +790,14 @@
 				8F6C898DACE3372F97A6B6BD /* BookCardView.swift in Sources */,
 				48EBB051E6181B47717AF59B /* BookFormat.swift in Sources */,
 				354E9D7C74C58494D3C6904C /* BookImporter.swift in Sources */,
+				3940B5F270C74034ADA817AB /* FB2Importer.swift in Sources */,
 				60A49E25889DDD186EE4BE0A /* BridgeTypes.swift in Sources */,
 				1BF1B20D0C000EB7997890AE /* ContentView.swift in Sources */,
 				1AF2D54E2B97AAC548EDE8B9 /* DatabaseManager.swift in Sources */,
 				302FC0A76768920129069603 /* EPUBBook.swift in Sources */,
+				D8FCF7F78E5141DD9C75A2FF /* BookContentProvider.swift in Sources */,
+				3514C05FE45943C7AA3EA854 /* FB2Book.swift in Sources */,
+				88449964798F4A708D105E9B /* FB2BookLoader.swift in Sources */,
 				BFD366F22FE1CA8D38C67DE8 /* EPUBBridgeProtocol.swift in Sources */,
 				3EEEB2402D23F63F5FBFE5D6 /* EPUBTestLoader.swift in Sources */,
 				8CB0CC8FA50FDAA88C4764CF /* EPUBTestView.swift in Sources */,
@@ -840,6 +860,7 @@
 				DB476CF98D2614EF09DB2E99 /* Book.swift in Sources */,
 				6E02D48D74F7EF73517DCBEC /* BookFormat.swift in Sources */,
 				533DDA3FB8FDE45663AC4767 /* BookImporter.swift in Sources */,
+				DDDF4C122D18406B9A0365EF /* FB2Importer.swift in Sources */,
 				7AFFB9157D4C54A606AA5266 /* DatabaseManager.swift in Sources */,
 				5A30AFF2940C6C5C9951FAED /* FileAccess.swift in Sources */,
 				8981579321513632F163DB14 /* Highlight.swift in Sources */,
@@ -873,6 +894,9 @@
 				62505A71C1498953E956D836 /* ReaderiPhoneApp.swift in Sources */,
 				E8D9BC2416CD6FBA988870C0 /* TextNote.swift in Sources */,
 				AA000001000000000000AA01 /* EPUBBook.swift in Sources */,
+				D322653647F04F1B87B63D7F /* BookContentProvider.swift in Sources */,
+				8CDB0EA0EBC5432597B02EBC /* FB2Book.swift in Sources */,
+				F2EB1872856C424B8F6EBC6A /* FB2BookLoader.swift in Sources */,
 				AA000002000000000000AA02 /* IPhoneEPUBWebView.swift in Sources */,
 				AA000004000000000000AA04 /* IPhoneEPUBReaderStore.swift in Sources */,
 				AA000006000000000000AA06 /* IPhoneEPUBReaderView.swift in Sources */,
@@ -931,6 +955,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7QU9B38DLA;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "slow reader iPhone";
 				INFOPLIST_KEY_CFBundleName = "slow reader iPhone";
@@ -1060,6 +1085,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7QU9B38DLA;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "slow reader iPhone";
 				INFOPLIST_KEY_CFBundleName = "slow reader iPhone";

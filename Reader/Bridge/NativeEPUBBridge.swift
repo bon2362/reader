@@ -7,7 +7,7 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
     private weak var webView: WKWebView?
     private weak var preflightView: WKWebView?
 
-    private var book: EPUBBook?
+    private var book: (any BookContentProvider)?
     private var currentChapterIndex: Int = 0
     private var pageInChapter: Int = 0
     private var totalInChapter: Int = 1
@@ -73,7 +73,7 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
     func loadBook(url: URL) {
         Task { @MainActor in
             do {
-                let loaded = try EPUBBookLoader.load(from: url)
+                let loaded = try BookContentLoader.load(from: url)
                 self.book = loaded
                 self.currentChapterIndex = 0
                 self.pageInChapter = 0

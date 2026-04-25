@@ -43,6 +43,11 @@ enum FileAccess {
     }
 
     @discardableResult
+    static func copyFB2ToSandbox(from source: URL, bookId: String) throws -> URL {
+        try copyBookToSandbox(from: source, bookId: bookId, extension: "fb2")
+    }
+
+    @discardableResult
     private static func copyBookToSandbox(from source: URL, bookId: String, extension fileExtension: String) throws -> URL {
         let destination = try booksDir.appendingPathComponent("\(bookId).\(fileExtension)")
         let fm = FileManager.default
@@ -56,7 +61,7 @@ enum FileAccess {
     static func deleteBookFiles(bookId: String) throws {
         let fm = FileManager.default
 
-        for fileExtension in ["epub", "pdf"] {
+        for fileExtension in ["epub", "pdf", "fb2"] {
             let bookFile = try booksDir.appendingPathComponent("\(bookId).\(fileExtension)")
             if fm.fileExists(atPath: bookFile.path) {
                 try fm.removeItem(at: bookFile)

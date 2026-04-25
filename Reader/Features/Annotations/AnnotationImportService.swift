@@ -371,7 +371,7 @@ struct AnnotationImportService {
     }
 
     private func decodePageInChapter(_ pageLabel: String?, format: BookFormat) -> Int {
-        guard format == .epub, let pageLabel else { return 0 }
+        guard format == .epub || format == .fb2, let pageLabel else { return 0 }
         guard let range = pageLabel.range(of: #"Page\s+(\d+)"#, options: .regularExpression) else {
             return 0
         }

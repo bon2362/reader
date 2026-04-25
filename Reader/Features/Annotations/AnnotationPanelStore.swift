@@ -22,7 +22,7 @@ struct AnnotationLocationFormatter: Sendable {
         switch format {
         case .pdf:
             return "Стр. \(note.spineIndex + 1)"
-        case .epub:
+        case .epub, .fb2:
             if let globalPage = globalPage(for: note, chapterPageCounts: chapterPageCounts) {
                 return "Стр. \(globalPage)"
             }
@@ -38,7 +38,7 @@ struct AnnotationLocationFormatter: Sendable {
         switch format {
         case .pdf:
             return "Page \(note.spineIndex + 1)"
-        case .epub:
+        case .epub, .fb2:
             if let globalPage = globalPage(for: note, chapterPageCounts: chapterPageCounts) {
                 return "Page \(globalPage)"
             }

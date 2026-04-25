@@ -14,7 +14,7 @@ final class IPhoneEPUBReaderStore {
     private let book: Book
     private let bookURL: URL
     private let libraryRepository: LibraryRepositoryProtocol
-    private var epubBook: EPUBBook?
+    private var epubBook: (any BookContentProvider)?
     private var currentChapterIndex: Int = 0
     private var pendingRestorePage: Int?
     private weak var webView: WKWebView?
@@ -36,7 +36,7 @@ final class IPhoneEPUBReaderStore {
     func load() async {
         defer { isLoading = false }
         do {
-            let epub = try EPUBBookLoader.load(from: bookURL)
+            let epub = try BookContentLoader.load(from: bookURL)
             self.epubBook = epub
             let (chapter, page) = parsePosition(book.lastCFI, in: epub)
             loadChapter(at: chapter, restorePage: page)
@@ -133,7 +133,7 @@ final class IPhoneEPUBReaderStore {
         saveProgress()
     }
 
-    private func chapterLabel(at index: Int, in epub: EPUBBook) -> String {
+    private func chapterLabel(at index: Int, in epub: any BookContentProvider) -> String {
         let href = EPUBBook.normalizeHref(epub.chapters[index].href)
         if let node = epub.toc.first(where: {
             EPUBBook.normalizeHref($0.href.components(separatedBy: "#")[0]) == href
@@ -161,7 +161,7 @@ final class IPhoneEPUBReaderStore {
         }
     }
 
-    private func parsePosition(_ cfi: String?, in epub: EPUBBook) -> (chapter: Int, page: Int) {
+    private func parsePosition(_ cfi: String?, in epub: any BookContentProvider) -> (chapter: Int, page: Int) {
         guard let cfi, !cfi.isEmpty else { return (0, 0) }
         let parts = cfi.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
         guard parts.count == 2 else { return (0, 0) }
