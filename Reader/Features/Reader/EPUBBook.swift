@@ -135,7 +135,12 @@ enum EPUBBookLoader {
 
     static func load(from epubURL: URL) throws -> EPUBBook {
         let fm = FileManager.default
-        let root = fm.temporaryDirectory.appendingPathComponent("epub-\(UUID().uuidString)", isDirectory: true)
+        // Use cachesDirectory instead of temporaryDirectory.
+        // On iOS, WKWebView's WebContent process cannot access temporaryDirectory
+        // due to /private symlink path-resolution mismatch ("outside the sandbox" error).
+        // cachesDirectory is always accessible to WKWebView via loadFileURL.
+        let baseDir = fm.urls(for: .cachesDirectory, in: .userDomainMask).first ?? fm.temporaryDirectory
+        let root = baseDir.appendingPathComponent("epub-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: root, withIntermediateDirectories: true)
 
         do {

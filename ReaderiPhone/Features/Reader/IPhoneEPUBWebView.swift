@@ -10,6 +10,30 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         config.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
+
+        // Inject viewport meta at document start so EPUB HTML files get
+        // device-width rendering. Without this, WKWebView defaults to 980px
+        // viewport and scales content down, making text tiny on iPhone.
+        let viewportScript = WKUserScript(
+            source: """
+            (function() {
+                var existing = document.querySelector('meta[name="viewport"]');
+                if (existing) {
+                    existing.setAttribute('content', 'width=device-width, initial-scale=1.0');
+                } else {
+                    var meta = document.createElement('meta');
+                    meta.name = 'viewport';
+                    meta.content = 'width=device-width, initial-scale=1.0';
+                    var head = document.head || document.documentElement;
+                    if (head) head.insertBefore(meta, head.firstChild);
+                }
+            })();
+            """,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        config.userContentController.addUserScript(viewportScript)
+
         let userScript = WKUserScript(
             source: IPhoneEPUBWebView.readerJS,
             injectionTime: .atDocumentEnd,
@@ -23,9 +47,8 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
         context.coordinator.handler = handler
 
         let webView = WKWebView(frame: .zero, configuration: config)
-        // Прозрачный WebView — SwiftUI-контейнер (.systemBackground) даёт фон.
-        // Иначе в тёмном режиме WKWebView рисует чёрный фон, а текст EPUB
-        // (color: black из EPUB CSS) становится невидимым.
+        // Transparent WebView — SwiftUI container provides the background colour.
+        // Without this, WKWebView draws black in dark mode, hiding EPUB text.
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
@@ -86,11 +109,11 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
             style.textContent = [
                 'html, body { margin:0; padding:0; overflow: hidden; height: 100vh; width: 100vw; background: transparent; color: #000;',
                 '  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", serif;',
-                '  font-size: 18px; line-height: 1.6; text-align: justify;',
+                '  font-size: 17px; line-height: 1.65; text-align: justify;',
                 '  -webkit-user-select: text; user-select: text;',
                 '}',
-                '#__reader_wrap { padding: 48px 64px; box-sizing: border-box;',
-                '  column-width: calc(100vw - 128px); column-gap: 128px; column-fill: auto;',
+                '#__reader_wrap { padding: 56px 24px; box-sizing: border-box;',
+                '  column-width: calc(100vw - 48px); column-gap: 48px; column-fill: auto;',
                 '  height: 100vh; width: 100vw;',
                 '  will-change: transform; transition: none;',
                 '}',
