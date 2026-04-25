@@ -83,8 +83,6 @@ final class IPhoneEPUBReaderStore {
     func handleMessage(type: String, data: [String: Any]) {
         switch type {
         case "ready":
-            let total = (data["totalPages"] as? Int) ?? 1
-            totalInChapter = max(1, total)
             if let page = pendingRestorePage {
                 pendingRestorePage = nil
                 if page == .max {
