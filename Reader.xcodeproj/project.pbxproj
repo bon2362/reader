@@ -147,6 +147,10 @@
 		FA01E7D737BA3F06FDA4C03A /* AnnotationPanelStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D681B1E40DBB696EAEC266F5 /* AnnotationPanelStoreTests.swift */; };
 		FCB969570B471C389F44E5B1 /* HighlightsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83874436AEE81A12B0BE9276 /* HighlightsStore.swift */; };
 		FCD3278C0180C696CD019689 /* HighlightsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83874436AEE81A12B0BE9276 /* HighlightsStore.swift */; };
+		AA000001000000000000AA01 /* EPUBBook.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6F036F85EB0F18A0CD0EF37 /* EPUBBook.swift */; };
+		AA000002000000000000AA02 /* IPhoneEPUBWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000003000000000000AA03 /* IPhoneEPUBWebView.swift */; };
+		AA000004000000000000AA04 /* IPhoneEPUBReaderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000005000000000000AA05 /* IPhoneEPUBReaderStore.swift */; };
+		AA000006000000000000AA06 /* IPhoneEPUBReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000007000000000000AA07 /* IPhoneEPUBReaderView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -273,6 +277,9 @@
 		FADF34C3BC64D4841605BC39 /* Migration_002.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migration_002.swift; sourceTree = "<group>"; };
 		FE0088B555A2D8F1C3200A2F /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
 		FFAA70F8A14B9D0061036F99 /* StickyNotesOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyNotesOverlayView.swift; sourceTree = "<group>"; };
+		AA000003000000000000AA03 /* IPhoneEPUBWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneEPUBWebView.swift; sourceTree = "<group>"; };
+		AA000005000000000000AA05 /* IPhoneEPUBReaderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneEPUBReaderStore.swift; sourceTree = "<group>"; };
+		AA000007000000000000AA07 /* IPhoneEPUBReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneEPUBReaderView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -428,6 +435,9 @@
 				DF90533CE0AECF6FF88EA4E5 /* IPhonePDFKitView.swift */,
 				D8D6605E296EC5A944901E84 /* IPhonePDFReaderStore.swift */,
 				6F8DBC15E9F6203E48724247 /* IPhonePDFReaderView.swift */,
+				AA000003000000000000AA03 /* IPhoneEPUBWebView.swift */,
+				AA000005000000000000AA05 /* IPhoneEPUBReaderStore.swift */,
+				AA000007000000000000AA07 /* IPhoneEPUBReaderView.swift */,
 			);
 			path = Reader;
 			sourceTree = "<group>";
@@ -861,6 +871,10 @@
 				010E8087B48C02A867C5279D /* PageNote.swift in Sources */,
 				62505A71C1498953E956D836 /* ReaderiPhoneApp.swift in Sources */,
 				E8D9BC2416CD6FBA988870C0 /* TextNote.swift in Sources */,
+				AA000001000000000000AA01 /* EPUBBook.swift in Sources */,
+				AA000002000000000000AA02 /* IPhoneEPUBWebView.swift in Sources */,
+				AA000004000000000000AA04 /* IPhoneEPUBReaderStore.swift in Sources */,
+				AA000006000000000000AA06 /* IPhoneEPUBReaderView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

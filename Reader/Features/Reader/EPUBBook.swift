@@ -35,6 +35,14 @@ final class EPUBBook: @unchecked Sendable {
         return chapters.firstIndex { EPUBBook.normalizeHref($0.href) == normalized }
     }
 
+    static func makePageAnchor(href: String, page: Int) -> String {
+        "\(href)|p:\(page)"
+    }
+
+    static func makeOffsetAnchor(href: String, offset: Int) -> String {
+        "\(href)|o:\(offset)"
+    }
+
     func search(query: String, limit: Int) -> [SearchResult] {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !needle.isEmpty, limit > 0 else { return [] }
@@ -51,7 +59,7 @@ final class EPUBBook: @unchecked Sendable {
                     range: searchStart..<text.endIndex
                   ) {
                 let offset = range.lowerBound.utf16Offset(in: text)
-                let cfi = NativeEPUBBridge.makeOffsetAnchor(
+                let cfi = EPUBBook.makeOffsetAnchor(
                     href: EPUBBook.normalizeHref(chapter.href),
                     offset: offset
                 )

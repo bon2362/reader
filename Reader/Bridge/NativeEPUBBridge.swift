@@ -425,15 +425,15 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
     }
 
     nonisolated static func makePageAnchor(href: String, page: Int) -> String {
-        "\(href)|p:\(page)"
+        EPUBBook.makePageAnchor(href: href, page: page)
     }
 
     nonisolated static func makeOffsetAnchor(href: String, offset: Int) -> String {
-        "\(href)|o:\(offset)"
+        EPUBBook.makeOffsetAnchor(href: href, offset: offset)
     }
 
     nonisolated static func makeAnchor(href: String, offset: Int) -> String {
-        makeOffsetAnchor(href: href, offset: offset)
+        EPUBBook.makeOffsetAnchor(href: href, offset: offset)
     }
 
     private func parseAnchor(_ s: String, defaultKind: AnchorKind) -> ParsedAnchor? {
