@@ -465,6 +465,13 @@ final class NativeEPUBBridge: NSObject, EPUBBridgeProtocol {
                 guard !shouldDeferPageChangedReport else { return }
                 reportPageChanged()
             }
+        case "navRequest":
+            // JS keydown handler delegates here so chapter-boundary advance works
+            // even when the WebView holds first responder.
+            if let direction = dict["direction"] as? String {
+                if direction == "next" { nextPage() }
+                else if direction == "prev" { prevPage() }
+            }
         case "textSelected":
             guard let startOffset = dict["startOffset"] as? Int,
                   let endOffset = dict["endOffset"] as? Int,

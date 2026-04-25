@@ -428,11 +428,14 @@ struct NativeEPUBWebView: NSViewRepresentable {
 
         document.addEventListener('keydown', function(e) {
             if (isEditableTarget(e.target)) return;
+            // Delegate to native bridge so chapter-boundary navigation is consistent
+            // with edge clicks. Calling window.__reader.nextPage() directly cannot
+            // cross chapter boundaries — only the Swift bridge can.
             if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ' || e.code === 'Space') {
-                window.__reader.nextPage();
+                post({type: 'navRequest', direction: 'next'});
                 e.preventDefault();
             } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-                window.__reader.prevPage();
+                post({type: 'navRequest', direction: 'prev'});
                 e.preventDefault();
             }
         }, true);
