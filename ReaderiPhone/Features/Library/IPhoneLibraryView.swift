@@ -43,10 +43,17 @@ struct IPhoneLibraryView: View {
         }
         .navigationTitle("Library")
         .navigationDestination(item: $openedBook) { openedBook in
-            IPhonePDFReaderView(
-                openedBook: openedBook,
-                libraryRepository: store.libraryRepository
-            )
+            if openedBook.book.format == .epub {
+                IPhoneEPUBReaderView(
+                    openedBook: openedBook,
+                    libraryRepository: store.libraryRepository
+                )
+            } else {
+                IPhonePDFReaderView(
+                    openedBook: openedBook,
+                    libraryRepository: store.libraryRepository
+                )
+            }
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
