@@ -11,7 +11,10 @@ struct IPhonePDFDocumentPicker: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         let controller = UIDocumentPickerViewController(
-            forOpeningContentTypes: [UTType.pdf],
+            forOpeningContentTypes: [
+                UTType.pdf,
+                UTType(filenameExtension: "epub") ?? .item
+            ],
             asCopy: false
         )
         controller.allowsMultipleSelection = false

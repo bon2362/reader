@@ -38,7 +38,7 @@ struct IPhoneLibraryView: View {
         }
         .overlay {
             if store.isLoading || store.isImporting {
-                ProgressView(store.isImporting ? "Importing PDF" : "Loading Library")
+                ProgressView(store.isImporting ? "Importing..." : "Loading Library")
             }
         }
         .navigationTitle("Library")
@@ -57,7 +57,7 @@ struct IPhoneLibraryView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Import PDF") {
+                Button("Import Book") {
                     isImportPickerPresented = true
                 }
             }
@@ -67,7 +67,7 @@ struct IPhoneLibraryView: View {
                 isImportPickerPresented = false
                 guard let url = urls.first else { return }
                 Task {
-                    await store.importPDF(from: url)
+                    await store.importBook(from: url)
                 }
             }
         }

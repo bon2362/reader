@@ -49,9 +49,10 @@ final class IPhoneLibraryStore {
         }
     }
 
-    func importPDF(from url: URL) async {
-        guard url.pathExtension.lowercased() == BookFormat.pdf.rawValue else {
-            errorMessage = "Поддерживаются только PDF-файлы."
+    func importBook(from url: URL) async {
+        let ext = url.pathExtension.lowercased()
+        guard ext == BookFormat.pdf.rawValue || ext == BookFormat.epub.rawValue else {
+            errorMessage = "Поддерживаются только PDF и EPUB файлы."
             return
         }
 
@@ -60,9 +61,7 @@ final class IPhoneLibraryStore {
 
         let hasScopedAccess = url.startAccessingSecurityScopedResource()
         defer {
-            if hasScopedAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
+            if hasScopedAccess { url.stopAccessingSecurityScopedResource() }
         }
 
         do {
