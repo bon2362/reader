@@ -4,7 +4,7 @@ import WebKit
 struct IPhoneEPUBWebView: UIViewRepresentable {
     let store: IPhoneEPUBReaderStore
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeCoordinator() -> Coordinator { Coordinator(store: store) }
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -56,6 +56,23 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
         webView.allowsBackForwardNavigationGestures = false
         if #available(iOS 16.4, *) { webView.isInspectable = true }
 
+        // Swipe gestures for page turning
+        let swipeLeft = UISwipeGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleSwipeLeft)
+        )
+        swipeLeft.direction = .left
+        swipeLeft.delegate = context.coordinator
+        webView.addGestureRecognizer(swipeLeft)
+
+        let swipeRight = UISwipeGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleSwipeRight)
+        )
+        swipeRight.direction = .right
+        swipeRight.delegate = context.coordinator
+        webView.addGestureRecognizer(swipeRight)
+
         store.attachWebView(webView)
         return webView
     }
@@ -68,8 +85,27 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator {
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var handler: MessageHandler?
+        private weak var store: IPhoneEPUBReaderStore?
+
+        init(store: IPhoneEPUBReaderStore) {
+            self.store = store
+        }
+
+        @objc func handleSwipeLeft(_ sender: UISwipeGestureRecognizer) {
+            store?.goToNextPage()
+        }
+
+        @objc func handleSwipeRight(_ sender: UISwipeGestureRecognizer) {
+            store?.goToPreviousPage()
+        }
+
+        // Allow swipe gestures to fire alongside WebKit's own recognizers
+        nonisolated func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+        ) -> Bool { true }
     }
 
     final class MessageHandler: NSObject, WKScriptMessageHandler {
@@ -212,6 +248,67 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 var existing = document.querySelectorAll('mark.reader-note[data-note-id="' + cssEsc(n.id) + '"]');
                 for (var i = 0; i < existing.length; i++) unwrap(existing[i]);
                 applyOne(n, 'note');
+            },
+            setTheme: function(theme) {
+                var el = document.getElementById('__reader_theme');
+                if (el) el.parentNode.removeChild(el);
+                if (theme === 'auto') return;
+                var s = document.createElement('style');
+                s.id = '__reader_theme';
+                var bg, fg;
+                if (theme === 'light')      { bg = '#faf8f4'; fg = '#1a1a1a'; }
+                else if (theme === 'sepia') { bg = '#f5efe0'; fg = '#3b2e1a'; }
+                else if (theme === 'dark')  { bg = '#1a1a1a'; fg = '#e8e4dc'; }
+                if (bg) s.textContent = 'html,body{background:' + bg + '!important;color:' + fg + '!important} *{color:inherit}';
+                document.head.appendChild(s);
+            },
+            setFontSize: function(px) {
+                var el = document.getElementById('__reader_fs');
+                if (el) el.parentNode.removeChild(el);
+                var s = document.createElement('style');
+                s.id = '__reader_fs';
+                s.textContent = 'html,body{font-size:' + px + 'px!important}';
+                document.head.appendChild(s);
+                setTimeout(function() {
+                    var max = totalPages() - 1;
+                    if (__page > max) __page = max;
+                    applyTransform(); reportPage();
+                }, 120);
+            },
+            setLineHeight: function(v) {
+                var el = document.getElementById('__reader_lh');
+                if (el) el.parentNode.removeChild(el);
+                var s = document.createElement('style');
+                s.id = '__reader_lh';
+                s.textContent = 'html,body{line-height:' + v + '!important}';
+                document.head.appendChild(s);
+                setTimeout(function() {
+                    var max = totalPages() - 1;
+                    if (__page > max) __page = max;
+                    applyTransform(); reportPage();
+                }, 120);
+            },
+            search: function(query) {
+                if (!query) return [];
+                var lower = query.toLowerCase();
+                var nodes = collectTextNodes();
+                var pos = 0;
+                var results = [];
+                for (var i = 0; i < nodes.length; i++) {
+                    var text = nodes[i].nodeValue;
+                    var ltext = text.toLowerCase();
+                    var idx = 0;
+                    while (true) {
+                        var found = ltext.indexOf(lower, idx);
+                        if (found === -1) break;
+                        var ss = Math.max(0, found - 40);
+                        var se = Math.min(text.length, found + query.length + 40);
+                        results.push({ offset: pos + found, length: query.length, snippet: text.substring(ss, se) });
+                        idx = found + 1;
+                    }
+                    pos += text.length;
+                }
+                return results;
             }
         };
 
@@ -431,6 +528,12 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
             if (mark) {
                 var id = mark.getAttribute('data-hl-id');
                 if (id) post({type: 'highlightTapped', id: id});
+                return;
+            }
+            // Tap on empty area — toggle menu
+            var sel = window.getSelection();
+            if (!sel || sel.isCollapsed) {
+                post({type: 'tap'});
             }
         }, true);
 

@@ -4,6 +4,7 @@ struct IPhoneLibraryView: View {
     @State var store: IPhoneLibraryStore
     @State private var isImportPickerPresented = false
     @State private var openedBook: IPhoneOpenedBook?
+    @State private var bookToDelete: Book?
 
     var body: some View {
         List {
@@ -18,9 +19,9 @@ struct IPhoneLibraryView: View {
             } else if store.books.isEmpty, store.isLoading == false {
                 Section {
                     ContentUnavailableView(
-                        "Your Library Is Local",
+                        "Библиотека пуста",
                         systemImage: "books.vertical",
-                        description: Text("This iPhone app starts fully offline. Import local PDFs in the next story to begin building your library.")
+                        description: Text("Нажмите + чтобы добавить книгу.")
                     )
                 }
             } else {
@@ -33,15 +34,23 @@ struct IPhoneLibraryView: View {
                         IPhoneLibraryBookRow(book: book)
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            bookToDelete = book
+                        } label: {
+                            Label("Удалить", systemImage: "trash")
+                        }
+                    }
                 }
             }
         }
+        .listStyle(.plain)
         .overlay {
             if store.isLoading || store.isImporting {
-                ProgressView(store.isImporting ? "Importing..." : "Loading Library")
+                ProgressView(store.isImporting ? "Импорт..." : "Загрузка")
             }
         }
-        .navigationTitle("Library")
+        .navigationTitle("Библиотека")
         .navigationDestination(item: $openedBook) { openedBook in
             if openedBook.book.format != .pdf {
                 IPhoneEPUBReaderView(
@@ -57,8 +66,11 @@ struct IPhoneLibraryView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Import Book") {
+                Button {
                     isImportPickerPresented = true
+                } label: {
+                    Image(systemName: "plus")
+                        .fontWeight(.semibold)
                 }
             }
         }
@@ -69,6 +81,24 @@ struct IPhoneLibraryView: View {
                 Task {
                     await store.importBook(from: url)
                 }
+            }
+        }
+        .confirmationDialog(
+            bookToDelete.map { "\($0.title)" } ?? "",
+            isPresented: Binding(
+                get: { bookToDelete != nil },
+                set: { if !$0 { bookToDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let book = bookToDelete {
+                Button("Удалить из библиотеки", role: .destructive) {
+                    Task { await store.deleteFromLibrary(book) }
+                }
+                Button("Удалить с устройства", role: .destructive) {
+                    Task { await store.deleteFromDevice(book) }
+                }
+                Button("Отмена", role: .cancel) {}
             }
         }
         .task {

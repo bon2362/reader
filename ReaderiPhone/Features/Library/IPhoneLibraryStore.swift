@@ -72,6 +72,22 @@ final class IPhoneLibraryStore {
         }
     }
 
+    func deleteFromLibrary(_ book: Book) async {
+        try? await libraryRepository.delete(id: book.id)
+        await load()
+    }
+
+    func deleteFromDevice(_ book: Book) async {
+        do {
+            try FileManager.default.removeItem(at: URL(fileURLWithPath: book.filePath))
+        } catch {
+            // File may already be missing — proceed with DB deletion regardless
+            NSLog("[Library] Could not remove file for \"%@\": %@", book.title, error.localizedDescription)
+        }
+        try? await libraryRepository.delete(id: book.id)
+        await load()
+    }
+
     func prepareOpenBook(_ book: Book) async -> IPhoneOpenedBook? {
         let localURL = URL(fileURLWithPath: book.filePath)
 
