@@ -209,7 +209,7 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 var el = null;
                 try { el = document.getElementById(id); } catch (e) {}
                 if (!el) {
-                    var nameEsc = id.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+                    var nameEsc = id.replace(/\\\\/g, '\\\\\\\\').replace(/"/g, '\\\\"');
                     try { el = document.querySelector('[name="' + nameEsc + '"]'); } catch (e) {}
                 }
                 if (!el) return;
