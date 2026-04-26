@@ -230,40 +230,47 @@ struct IPhoneEPUBReaderView: View {
 
     private func noteViewOverlay(for note: TextNote) -> some View {
         GeometryReader { geo in
-            VStack(alignment: .leading, spacing: 8) {
-                if let selected = note.selectedText, !selected.isEmpty {
-                    Text(selected)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-                Text(note.body)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                HStack {
-                    Spacer()
-                    Button(role: .destructive) {
-                        Task { await store.deleteTextNote(id: note.id) }
-                    } label: {
-                        Label("Удалить", systemImage: "trash")
-                            .font(.caption.weight(.medium))
-                    }
-                    Button { store.dismissNoteEditing() } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption.weight(.medium))
+            ZStack {
+                // Dimming backdrop — tap outside card to dismiss
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { store.dismissNoteEditing() }
+
+                // Note card — buttons have full gesture priority
+                VStack(alignment: .leading, spacing: 8) {
+                    if let selected = note.selectedText, !selected.isEmpty {
+                        Text(selected)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    Text(note.body)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                    HStack {
+                        Spacer()
+                        Button(role: .destructive) {
+                            Task { await store.deleteTextNote(id: note.id) }
+                        } label: {
+                            Label("Удалить", systemImage: "trash")
+                                .font(.caption.weight(.medium))
+                        }
+                        Button { store.dismissNoteEditing() } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
+                .padding(12)
+                .frame(maxWidth: geo.size.width * 0.85)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                .shadow(radius: 10, y: 4)
+                .position(x: geo.size.width / 2, y: geo.size.height / 2)
             }
-            .padding(12)
-            .frame(maxWidth: geo.size.width * 0.85)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary.opacity(0.08), lineWidth: 1))
-            .shadow(radius: 10, y: 4)
-            .position(x: geo.size.width / 2, y: geo.size.height / 2)
         }
         .ignoresSafeArea()
-        .onTapGesture { store.dismissNoteEditing() }
     }
 
     // MARK: - TOC drawer
@@ -274,12 +281,12 @@ struct IPhoneEPUBReaderView: View {
                 // Dimming background
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
-                    .onTapGesture { withAnimation { isTOCVisible = false } }
+                    .onTapGesture { isTOCVisible = false }
 
                 // Panel
                 IPhoneTOCView(
                     store: store,
-                    onSelect: { withAnimation { isTOCVisible = false } }
+                    onSelect: { isTOCVisible = false }
                 )
                 .frame(width: geo.size.width * 0.82)
                 .background(Color(UIColor.systemBackground))

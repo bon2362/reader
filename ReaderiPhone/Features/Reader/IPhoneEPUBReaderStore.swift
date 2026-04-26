@@ -325,6 +325,7 @@ final class IPhoneEPUBReaderStore {
     func deleteTextNote(id: String) async {
         try? await annotationRepository.deleteTextNote(id: id)
         textNotes.removeAll { $0.id == id }
+        editingNoteId = nil
     }
 
     private func applyAnnotationsToCurrentChapter() {

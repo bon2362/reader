@@ -11,7 +11,7 @@ struct IPhoneLibraryView: View {
             if let errorMessage = store.errorMessage {
                 Section {
                     ContentUnavailableView(
-                        "Library Unavailable",
+                        "Библиотека недоступна",
                         systemImage: "exclamationmark.triangle",
                         description: Text(errorMessage)
                     )
