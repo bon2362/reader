@@ -105,19 +105,20 @@ struct IPhoneReaderSearchView: View {
     }
 
     private func highlightedSnippet(_ snippet: String, query: String) -> Text {
-        let lower = snippet.lowercased()
-        let lowerQuery = query.lowercased()
-        guard !lowerQuery.isEmpty else { return Text(snippet) }
+        guard !query.isEmpty else { return Text(snippet) }
 
         var result = Text("")
-        var searchFrom = lower.startIndex
+        var searchFrom = snippet.startIndex
 
-        while searchFrom < lower.endIndex,
-              let matchRange = lower.range(of: lowerQuery, range: searchFrom..<lower.endIndex) {
+        // Use case-insensitive search directly on snippet so the returned Range<String.Index>
+        // is always valid for subscripting snippet itself — avoids the cross-string index bug
+        // that would occur if we searched on a lowercased copy (e.g. ß → ss changes length).
+        while searchFrom < snippet.endIndex,
+              let matchRange = snippet.range(of: query, options: .caseInsensitive, range: searchFrom..<snippet.endIndex) {
             // Text before match
             let before = String(snippet[searchFrom..<matchRange.lowerBound])
             if !before.isEmpty { result = result + Text(before) }
-            // Matched text
+            // Matched text — preserve original casing from snippet
             let match = String(snippet[matchRange])
             result = result + Text(match).bold().foregroundStyle(Color.accentColor)
             searchFrom = matchRange.upperBound
