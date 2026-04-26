@@ -95,7 +95,7 @@ struct IPhoneReaderSearchView: View {
     }
 
     private func performSearch() {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        guard !isSearching, !query.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         isSearching = true
         hasSearched = true
         Task {

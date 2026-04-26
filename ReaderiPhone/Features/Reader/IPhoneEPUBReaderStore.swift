@@ -303,7 +303,8 @@ final class IPhoneEPUBReaderStore {
         highlights.removeAll { $0.id == id }
         editingHighlightId = nil
         pendingSelection = nil
-        webView?.evaluateJavaScript("window.__reader && window.__reader.removeHighlight(\(removeJS(id: id)));", completionHandler: nil)
+        let safeId = jsEscapeString(id)
+        webView?.evaluateJavaScript("window.__reader && window.__reader.removeHighlight(\"\(safeId)\");", completionHandler: nil)
     }
 
     func addTextNote(text: String) async {
@@ -476,20 +477,20 @@ final class IPhoneEPUBReaderStore {
     }
 
     private func hlJS(id: String, start: Int, end: Int, color: String) -> String {
-        "{\"id\":\"\(id)\",\"startOffset\":\(start),\"endOffset\":\(end),\"color\":\"\(color)\"}"
+        let safeId = jsEscapeString(id)
+        return "{\"id\":\"\(safeId)\",\"startOffset\":\(start),\"endOffset\":\(end),\"color\":\"\(color)\"}"
     }
 
     private func noteJS(id: String, start: Int, end: Int) -> String {
-        "{\"id\":\"\(id)\",\"startOffset\":\(start),\"endOffset\":\(end)}"
+        let safeId = jsEscapeString(id)
+        return "{\"id\":\"\(safeId)\",\"startOffset\":\(start),\"endOffset\":\(end)}"
     }
 
-    /// Produces a safe JSON object literal `{"id":"..."}` for use in removeHighlight JS calls.
-    /// Escapes backslashes and double-quotes so the value cannot break out of the string literal.
-    private func removeJS(id: String) -> String {
-        let safe = id
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-        return "{\"id\":\"\(safe)\"}"
+    /// Escapes backslashes and double-quotes so a value can be safely embedded inside
+    /// a JS double-quoted string literal without breaking out of it.
+    private func jsEscapeString(_ s: String) -> String {
+        s.replacingOccurrences(of: "\\", with: "\\\\")
+         .replacingOccurrences(of: "\"", with: "\\\"")
     }
 
     // MARK: - Chapter management
