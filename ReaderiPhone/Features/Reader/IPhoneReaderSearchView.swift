@@ -88,7 +88,7 @@ struct IPhoneReaderSearchView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Найти") { performSearch() }
-                        .disabled(query.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .disabled(isSearching || query.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }

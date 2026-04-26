@@ -25,6 +25,7 @@ struct IPhoneHighlightColorPicker: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(colorName(color))
             }
 
             if showDelete {
@@ -52,6 +53,16 @@ struct IPhoneHighlightColorPicker: View {
         .background(.ultraThinMaterial, in: Capsule())
         .overlay(Capsule().stroke(Color.primary.opacity(0.08), lineWidth: 1))
         .shadow(radius: 8, y: 2)
+    }
+
+    private func colorName(_ color: HighlightColor) -> String {
+        switch color {
+        case .yellow: return "Жёлтый"
+        case .red:    return "Красный"
+        case .green:  return "Зелёный"
+        case .blue:   return "Синий"
+        case .purple: return "Фиолетовый"
+        }
     }
 
     private func swatch(for color: HighlightColor) -> Color {

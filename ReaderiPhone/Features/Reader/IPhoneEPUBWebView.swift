@@ -209,7 +209,8 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 var el = null;
                 try { el = document.getElementById(id); } catch (e) {}
                 if (!el) {
-                    try { el = document.querySelector('[name="' + id.replace(/"/g, '\\\\"') + '"]'); } catch (e) {}
+                    var nameEsc = id.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+                    try { el = document.querySelector('[name="' + nameEsc + '"]'); } catch (e) {}
                 }
                 if (!el) return;
                 // Reset transform so getBoundingClientRect returns untranslated coords.
@@ -288,6 +289,9 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                     applyTransform(); reportPage();
                 }, 120);
             },
+            // NOTE: Search matches within individual text nodes only. Phrases that span
+            // an inline element boundary (e.g. text split by <em> or <strong>) will not be
+            // found. This is a known limitation of the offset-based architecture.
             search: function(query) {
                 if (!query) return [];
                 var lower = query.toLowerCase();

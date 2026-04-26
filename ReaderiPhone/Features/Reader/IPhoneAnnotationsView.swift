@@ -49,9 +49,10 @@ struct IPhoneAnnotationsView: View {
                                 Circle()
                                     .fill(swatchColor(for: highlight.color))
                                     .frame(width: 10, height: 10)
-                                Text(highlight.selectedText)
+                                Text(highlight.selectedText.isEmpty ? "Хайлайт без текста" : highlight.selectedText)
                                     .font(.body)
                                     .lineLimit(3)
+                                    .foregroundStyle(highlight.selectedText.isEmpty ? .tertiary : .primary)
                             }
                             Text(highlight.createdAt, style: .date)
                                 .font(.caption)

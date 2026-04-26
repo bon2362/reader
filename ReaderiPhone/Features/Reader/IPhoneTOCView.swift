@@ -19,8 +19,8 @@ struct IPhoneTOCView: View {
                             Button {
                                 if let chapterIdx = store.chapterIndexForTOCItem(node) {
                                     store.goToChapter(at: chapterIdx)
+                                    onSelect()
                                 }
-                                onSelect()
                             } label: {
                                 HStack(spacing: 0) {
                                     if node.level > 0 {

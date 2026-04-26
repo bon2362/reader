@@ -84,7 +84,7 @@ struct IPhoneLibraryView: View {
             }
         }
         .confirmationDialog(
-            bookToDelete.map { "\($0.title)" } ?? "",
+            bookToDelete.map { $0.title.isEmpty ? "Без названия" : $0.title } ?? "",
             isPresented: Binding(
                 get: { bookToDelete != nil },
                 set: { if !$0 { bookToDelete = nil } }

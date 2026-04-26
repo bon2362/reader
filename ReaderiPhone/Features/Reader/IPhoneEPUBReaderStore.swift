@@ -80,6 +80,7 @@ final class IPhoneEPUBReaderStore {
     private var currentChapterIndex: Int = 0
     private var pendingRestorePage: Int?
     private weak var webView: WKWebView?
+    private var saveProgressDebounceTask: Task<Void, Never>?
 
     // MARK: - Init
 
@@ -183,7 +184,7 @@ final class IPhoneEPUBReaderStore {
     func handleMessage(type: String, data: [String: Any]) {
         switch type {
         case "tap":
-            withAnimation(.easeInOut(duration: 0.2)) { isMenuVisible.toggle() }
+            isMenuVisible.toggle()
 
         case "ready":
             if let page = pendingRestorePage {
@@ -302,7 +303,7 @@ final class IPhoneEPUBReaderStore {
         highlights.removeAll { $0.id == id }
         editingHighlightId = nil
         pendingSelection = nil
-        webView?.evaluateJavaScript("window.__reader && window.__reader.removeHighlight(\"\(id)\");", completionHandler: nil)
+        webView?.evaluateJavaScript("window.__reader && window.__reader.removeHighlight(\(removeJS(id: id)));", completionHandler: nil)
     }
 
     func addTextNote(text: String) async {
@@ -406,14 +407,14 @@ final class IPhoneEPUBReaderStore {
 
     func goToSearchResult(offset: Int) {
         webView?.evaluateJavaScript("window.__reader && window.__reader.goToOffset(\(offset));", completionHandler: nil)
-        withAnimation(.easeInOut(duration: 0.2)) { isMenuVisible = false }
+        isMenuVisible = false
     }
 
     // MARK: - Helpers
 
     func dismissMenu() {
         guard isMenuVisible else { return }
-        withAnimation(.easeInOut(duration: 0.2)) { isMenuVisible = false }
+        isMenuVisible = false
     }
 
     func dismissSelection() {
@@ -482,6 +483,15 @@ final class IPhoneEPUBReaderStore {
         "{\"id\":\"\(id)\",\"startOffset\":\(start),\"endOffset\":\(end)}"
     }
 
+    /// Produces a safe JSON object literal `{"id":"..."}` for use in removeHighlight JS calls.
+    /// Escapes backslashes and double-quotes so the value cannot break out of the string literal.
+    private func removeJS(id: String) -> String {
+        let safe = id
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        return "{\"id\":\"\(safe)\"}"
+    }
+
     // MARK: - Chapter management
 
     private func loadChapter(at index: Int, restorePage: Int? = nil) {
@@ -519,6 +529,8 @@ final class IPhoneEPUBReaderStore {
     }
 
     private func saveProgress() {
+        // Debounce: cancel the previous pending save so rapid page-flips don't spam the DB.
+        saveProgressDebounceTask?.cancel()
         guard let epub = epubBook, epub.chapters.indices.contains(currentChapterIndex) else { return }
         let href = EPUBBook.normalizeHref(epub.chapters[currentChapterIndex].href)
         let cfi = EPUBBook.makePageAnchor(href: href, page: pageInChapter)
@@ -526,7 +538,13 @@ final class IPhoneEPUBReaderStore {
         let repo = libraryRepository
         let chapterNumber = currentChapterIndex + 1
         let chapterCount = epub.chapters.count
-        Task {
+        saveProgressDebounceTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: .milliseconds(500))
+            } catch {
+                return // cancelled — a newer save is queued
+            }
+            guard self != nil else { return }
             try? await repo.updateReadingProgress(
                 id: bookID,
                 lastCFI: cfi,
