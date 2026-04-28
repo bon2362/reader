@@ -60,6 +60,21 @@ final class EPUBBook: BookContentProvider, @unchecked Sendable {
         return decodeHTMLEntities(text)
     }
 
+    static func htmlBodyContent(_ html: String) -> String {
+        let pattern = #"(?is)<body\b[^>]*>(.*?)</body>"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+              match.numberOfRanges > 1,
+              let bodyRange = Range(match.range(at: 1), in: html) else {
+            return html
+        }
+        return String(html[bodyRange])
+    }
+
+    static func htmlBodyTextContent(_ html: String) -> String {
+        htmlTextContent(htmlBodyContent(html))
+    }
+
     static func excerpt(in text: String, around range: Range<String.Index>) -> String {
         let context = 80
         let lower = text.index(range.lowerBound, offsetBy: -context, limitedBy: text.startIndex) ?? text.startIndex

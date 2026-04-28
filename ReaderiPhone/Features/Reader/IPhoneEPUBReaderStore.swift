@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import WebKit
 import Observation
 
@@ -12,8 +13,31 @@ struct EPUBTextSelection {
     let rect: CGRect
 }
 
+struct IPhoneTextNoteDraft: Identifiable, Equatable {
+    enum Kind: Equatable {
+        case highlight
+        case page
+    }
+
+    let id = UUID()
+    let kind: Kind
+    let highlightId: String?
+    let cfiAnchor: String
+    let selectedText: String?
+    let renderStartOffset: Int
+    let renderEndOffset: Int
+}
+
+private enum IPhoneHighlightEditSource {
+    case selectionOverlap
+    case tappedHighlight
+}
+
 struct EPUBSearchResult: Identifiable {
     let id = UUID()
+    let chapterIndex: Int
+    let chapterTitle: String
+    let chapterHref: String
     let offset: Int
     let length: Int
     let snippet: String
@@ -42,11 +66,16 @@ final class IPhoneEPUBReaderStore {
     var chapterTitle: String = ""
     var pageInChapter: Int = 0
     var totalInChapter: Int = 1
+    var globalPage: Int?
+    var totalBookPages: Int?
+    var chapterPageCounts: [Int] = []
+    var pageCalculationState: BookPageCalculationState = .idle
     var isLoading: Bool = true
     var errorMessage: String?
 
     // MARK: UI overlay state (driven by JS messages)
     var isMenuVisible: Bool = false
+    var requestDismiss: Bool = false
 
     // MARK: Annotation state
     var highlights: [Highlight] = []
@@ -54,16 +83,25 @@ final class IPhoneEPUBReaderStore {
     var pendingSelection: EPUBTextSelection?
     var editingHighlightId: String?
     var editingNoteId: String?
+    private var editingHighlightSource: IPhoneHighlightEditSource?
 
     // MARK: Reading settings (persisted)
     var readerTheme: ReaderTheme {
         didSet { UserDefaults.standard.set(readerTheme.rawValue, forKey: "reader.theme"); applyTheme() }
     }
     var fontSize: Int {
-        didSet { UserDefaults.standard.set(fontSize, forKey: "reader.fontSize"); applyFontSize() }
+        didSet {
+            UserDefaults.standard.set(fontSize, forKey: "reader.fontSize")
+            applyFontSize()
+            invalidatePageCountsAndRecalculate()
+        }
     }
     var lineHeight: Double {
-        didSet { UserDefaults.standard.set(lineHeight, forKey: "reader.lineHeight"); applyLineHeight() }
+        didSet {
+            UserDefaults.standard.set(lineHeight, forKey: "reader.lineHeight")
+            applyLineHeight()
+            invalidatePageCountsAndRecalculate()
+        }
     }
 
     // Default values — kept in one place to stay in sync with JS defaults and applyAppearanceSettings
@@ -79,8 +117,16 @@ final class IPhoneEPUBReaderStore {
     private var epubBook: (any BookContentProvider)?
     private var currentChapterIndex: Int = 0
     private var pendingRestorePage: Int?
+    private var pendingOffsetNavigation: (chapterIndex: Int, offset: Int, token: Int)?
+    private var offsetNavigationToken = 0
     private weak var webView: WKWebView?
+    private let pageCountCache = BookPageCountCache()
+    private var pageCalculator: BookPageCalculator?
+    private var pageCalculationKey: BookPageLayoutKey?
+    private var viewportWidth: Int = 0
+    private var viewportHeight: Int = 0
     private var saveProgressDebounceTask: Task<Void, Never>?
+    private var highlightSelectionsInFlight = Set<String>()
 
     // MARK: - Init
 
@@ -119,6 +165,7 @@ final class IPhoneEPUBReaderStore {
             await loadAnnotations()
             let (chapter, page) = parsePosition(book.lastCFI, in: epub)
             loadChapter(at: chapter, restorePage: page)
+            startPageCalculationIfPossible(for: epub)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -187,6 +234,7 @@ final class IPhoneEPUBReaderStore {
             isMenuVisible.toggle()
 
         case "ready":
+            guard isReadyForCurrentChapter(data) else { return }
             if let page = pendingRestorePage {
                 pendingRestorePage = nil
                 if page == .max {
@@ -198,11 +246,17 @@ final class IPhoneEPUBReaderStore {
             }
             applyAppearanceSettings()
             applyAnnotationsToCurrentChapter()
+            applyPendingOffsetNavigationIfNeeded()
 
         case "pageChanged":
             if let page = data["page"] as? Int, let total = data["totalPages"] as? Int {
                 pageInChapter = page
                 totalInChapter = max(1, total)
+                updateVisibleViewport(
+                    width: data["iw"] as? Int ?? viewportWidth,
+                    height: data["ih"] as? Int ?? viewportHeight
+                )
+                updateGlobalPage()
                 saveProgress()
             }
 
@@ -219,20 +273,33 @@ final class IPhoneEPUBReaderStore {
                     height: r["h"] as? Double ?? 0
                 )
             }
-            pendingSelection = EPUBTextSelection(
-                startOffset: startOffset,
-                endOffset: endOffset,
+            let normalized = normalizedRange(startOffset, endOffset)
+            let selection = EPUBTextSelection(
+                startOffset: normalized.start,
+                endOffset: normalized.end,
                 text: text,
                 rect: rect
             )
-            editingHighlightId = nil
+            pendingSelection = selection
+            if let overlapping = overlappingHighlight(for: selection) {
+                editingHighlightId = overlapping.id
+                editingHighlightSource = .selectionOverlap
+            } else {
+                editingHighlightId = nil
+                editingHighlightSource = nil
+            }
 
         case "selectionCleared":
             pendingSelection = nil
+            if editingHighlightSource == .selectionOverlap {
+                editingHighlightId = nil
+                editingHighlightSource = nil
+            }
 
         case "highlightTapped":
             if let id = data["id"] as? String {
                 editingHighlightId = id
+                editingHighlightSource = .tappedHighlight
                 editingNoteId = nil
                 pendingSelection = nil
             }
@@ -266,7 +333,38 @@ final class IPhoneEPUBReaderStore {
 
     func addHighlight(color: HighlightColor) async {
         guard let sel = pendingSelection else { return }
+        if let existing = overlappingHighlight(for: sel) {
+            pendingSelection = nil
+            if existing.color == color {
+                editingHighlightId = nil
+                editingHighlightSource = nil
+            } else {
+                await updateHighlightColor(id: existing.id, color: color)
+            }
+            return
+        }
+
         let href = currentChapterHref
+        let selectionKey = highlightSelectionKey(href: href, start: sel.startOffset, end: sel.endOffset)
+        guard !highlightSelectionsInFlight.contains(selectionKey) else {
+            pendingSelection = nil
+            editingHighlightId = nil
+            editingHighlightSource = nil
+            return
+        }
+        highlightSelectionsInFlight.insert(selectionKey)
+        pendingSelection = nil
+        editingHighlightId = nil
+        editingHighlightSource = nil
+        defer { highlightSelectionsInFlight.remove(selectionKey) }
+
+        if let existing = overlappingHighlight(start: sel.startOffset, end: sel.endOffset) {
+            if existing.color != color {
+                await updateHighlightColor(id: existing.id, color: color)
+            }
+            return
+        }
+
         let h = Highlight(
             bookId: book.id,
             cfiStart: EPUBBook.makeOffsetAnchor(href: href, offset: sel.startOffset),
@@ -274,9 +372,13 @@ final class IPhoneEPUBReaderStore {
             color: color,
             selectedText: sel.text
         )
-        try? await annotationRepository.insertHighlight(h)
+        do {
+            try await annotationRepository.insertHighlight(h)
+        } catch {
+            errorMessage = "Не удалось сохранить хайлайт"
+            return
+        }
         highlights.append(h)
-        pendingSelection = nil
 
         let js = hlJS(id: h.id, start: sel.startOffset, end: sel.endOffset, color: color.rawValue)
         webView?.evaluateJavaScript("window.__reader && window.__reader.addHighlight(\(js));", completionHandler: nil)
@@ -286,11 +388,17 @@ final class IPhoneEPUBReaderStore {
         guard var h = highlights.first(where: { $0.id == id }) else { return }
         h.color = color
         h.updatedAt = Date()
-        try? await annotationRepository.updateHighlight(h)
+        do {
+            try await annotationRepository.updateHighlight(h)
+        } catch {
+            errorMessage = "Не удалось обновить хайлайт"
+            return
+        }
         if let idx = highlights.firstIndex(where: { $0.id == id }) {
             highlights[idx] = h
         }
         editingHighlightId = nil
+        editingHighlightSource = nil
 
         if let start = offsetFromCFI(h.cfiStart), let end = offsetFromCFI(h.cfiEnd) {
             let js = hlJS(id: h.id, start: start, end: end, color: color.rawValue)
@@ -299,9 +407,18 @@ final class IPhoneEPUBReaderStore {
     }
 
     func deleteHighlight(id: String) async {
-        try? await annotationRepository.deleteHighlight(id: id)
+        do {
+            try await annotationRepository.deleteHighlight(id: id)
+        } catch {
+            errorMessage = "Не удалось удалить хайлайт"
+            return
+        }
         highlights.removeAll { $0.id == id }
+        for idx in textNotes.indices where textNotes[idx].highlightId == id {
+            textNotes[idx].highlightId = nil
+        }
         editingHighlightId = nil
+        editingHighlightSource = nil
         pendingSelection = nil
         let safeId = jsEscapeString(id)
         webView?.evaluateJavaScript("window.__reader && window.__reader.removeHighlight(\"\(safeId)\");", completionHandler: nil)
@@ -310,17 +427,108 @@ final class IPhoneEPUBReaderStore {
     func addTextNote(text: String) async {
         guard let sel = pendingSelection else { return }
         let href = currentChapterHref
-        let n = TextNote(
-            bookId: book.id,
+        let draft = IPhoneTextNoteDraft(
+            kind: .page,
+            highlightId: nil,
             cfiAnchor: EPUBBook.makeOffsetAnchor(href: href, offset: sel.startOffset),
             selectedText: sel.text,
-            body: text
+            renderStartOffset: sel.startOffset,
+            renderEndOffset: sel.endOffset
         )
-        try? await annotationRepository.insertTextNote(n)
+        await saveTextNote(body: text, draft: draft)
+    }
+
+    func prepareHighlightNoteDraft(defaultColor: HighlightColor = .yellow) async -> IPhoneTextNoteDraft? {
+        if let id = editingHighlightId, let h = highlights.first(where: { $0.id == id }) {
+            pendingSelection = nil
+            editingHighlightId = nil
+            editingHighlightSource = nil
+            return highlightNoteDraft(for: h)
+        }
+
+        guard let sel = pendingSelection else { return nil }
+        let highlight: Highlight
+        if let existing = overlappingHighlight(for: sel) {
+            pendingSelection = nil
+            editingHighlightId = nil
+            editingHighlightSource = nil
+            highlight = existing
+        } else {
+            let href = currentChapterHref
+            let selectionKey = highlightSelectionKey(href: href, start: sel.startOffset, end: sel.endOffset)
+            guard !highlightSelectionsInFlight.contains(selectionKey) else {
+                pendingSelection = nil
+                editingHighlightId = nil
+                editingHighlightSource = nil
+                return nil
+            }
+            highlightSelectionsInFlight.insert(selectionKey)
+            pendingSelection = nil
+            editingHighlightId = nil
+            editingHighlightSource = nil
+            defer { highlightSelectionsInFlight.remove(selectionKey) }
+
+            if let existing = overlappingHighlight(start: sel.startOffset, end: sel.endOffset) {
+                return highlightNoteDraft(for: existing)
+            }
+
+            let h = Highlight(
+                bookId: book.id,
+                cfiStart: EPUBBook.makeOffsetAnchor(href: href, offset: sel.startOffset),
+                cfiEnd: EPUBBook.makeOffsetAnchor(href: href, offset: sel.endOffset),
+                color: defaultColor,
+                selectedText: sel.text
+            )
+            do {
+                try await annotationRepository.insertHighlight(h)
+            } catch {
+                errorMessage = "Не удалось сохранить хайлайт"
+                return nil
+            }
+            highlights.append(h)
+            let js = hlJS(id: h.id, start: sel.startOffset, end: sel.endOffset, color: h.color.rawValue)
+            webView?.evaluateJavaScript("window.__reader && window.__reader.addHighlight(\(js));", completionHandler: nil)
+            highlight = h
+        }
+
+        pendingSelection = nil
+        editingHighlightId = nil
+        editingHighlightSource = nil
+        return highlightNoteDraft(for: highlight)
+    }
+
+    func preparePageNoteDraft() async -> IPhoneTextNoteDraft? {
+        let offset = await currentPageStartOffset()
+        return IPhoneTextNoteDraft(
+            kind: .page,
+            highlightId: nil,
+            cfiAnchor: EPUBBook.makeOffsetAnchor(href: currentChapterHref, offset: offset),
+            selectedText: nil,
+            renderStartOffset: offset,
+            renderEndOffset: offset + 1
+        )
+    }
+
+    func saveTextNote(body: String, draft: IPhoneTextNoteDraft) async {
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let n = TextNote(
+            bookId: book.id,
+            highlightId: draft.highlightId,
+            cfiAnchor: draft.cfiAnchor,
+            selectedText: draft.selectedText,
+            body: trimmed
+        )
+        do {
+            try await annotationRepository.insertTextNote(n)
+        } catch {
+            errorMessage = "Не удалось сохранить заметку"
+            return
+        }
         textNotes.append(n)
         pendingSelection = nil
 
-        let js = noteJS(id: n.id, start: sel.startOffset, end: sel.endOffset)
+        let js = noteJS(id: n.id, start: draft.renderStartOffset, end: draft.renderEndOffset)
         webView?.evaluateJavaScript("window.__reader && window.__reader.addNote(\(js));", completionHandler: nil)
     }
 
@@ -346,7 +554,7 @@ final class IPhoneEPUBReaderStore {
         if !chapterNotes.isEmpty {
             let arr = chapterNotes.compactMap { n -> String? in
                 guard let s = offsetFromCFI(n.cfiAnchor) else { return nil }
-                let len = n.selectedText?.count ?? 1
+                let len = max(1, n.selectedText?.count ?? 1)
                 return noteJS(id: n.id, start: s, end: s + len)
             }.joined(separator: ",")
             webView.evaluateJavaScript("window.__reader && window.__reader.applyNotes([\(arr)]);", completionHandler: nil)
@@ -376,38 +584,42 @@ final class IPhoneEPUBReaderStore {
     // MARK: - Search
 
     func search(query: String) async -> [EPUBSearchResult] {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty,
-              let webView else { return [] }
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !needle.isEmpty, let epub = epubBook else { return [] }
 
-        // Escape characters that would break a JS single-quoted string literal
-        let escaped = query
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "'",  with: "\\'")
-            .replacingOccurrences(of: "\n", with: "\\n")
-            .replacingOccurrences(of: "\r", with: "\\r")
-        let js = "JSON.stringify(window.__reader ? window.__reader.search('\(escaped)') : []);"
-
-        return await withCheckedContinuation { continuation in
-            webView.evaluateJavaScript(js) { result, _ in
-                guard let jsonStr = result as? String,
-                      let data = jsonStr.data(using: .utf8),
-                      let arr = try? JSONDecoder().decode([[String: AnyDecodable]].self, from: data) else {
-                    continuation.resume(returning: [])
-                    return
-                }
-                let results = arr.compactMap { d -> EPUBSearchResult? in
-                    guard let offset = d["offset"]?.value as? Int,
-                          let length = d["length"]?.value as? Int else { return nil }
-                    let snippet = d["snippet"]?.value as? String ?? ""
-                    return EPUBSearchResult(offset: offset, length: length, snippet: snippet)
-                }
-                continuation.resume(returning: results)
+        var results: [EPUBSearchResult] = []
+        for (chapterIndex, chapter) in epub.chapters.enumerated() {
+            guard let html = try? String(contentsOf: chapter.fileURL, encoding: .utf8) else { continue }
+            let text = EPUBBook.htmlBodyTextContent(html)
+            var searchStart = text.startIndex
+            while searchStart < text.endIndex,
+                  let range = text.range(
+                    of: needle,
+                    options: [.caseInsensitive, .diacriticInsensitive],
+                    range: searchStart..<text.endIndex
+                  ) {
+                results.append(EPUBSearchResult(
+                    chapterIndex: chapterIndex,
+                    chapterTitle: chapterLabel(at: chapterIndex, in: epub),
+                    chapterHref: EPUBBook.normalizeHref(chapter.href),
+                    offset: range.lowerBound.utf16Offset(in: text),
+                    length: needle.utf16.count,
+                    snippet: EPUBBook.excerpt(in: text, around: range)
+                ))
+                searchStart = range.upperBound
             }
         }
+        return results
     }
 
-    func goToSearchResult(offset: Int) {
-        webView?.evaluateJavaScript("window.__reader && window.__reader.goToOffset(\(offset));", completionHandler: nil)
+    func goToSearchResult(_ result: EPUBSearchResult) {
+        goToOffset(chapterIndex: result.chapterIndex, offset: result.offset)
+        isMenuVisible = false
+    }
+
+    func goToGlobalPage(_ page: Int) {
+        guard let target = EPUBPageMapper.target(forValidGlobalPage: page, counts: chapterPageCounts) else { return }
+        loadChapter(at: target.chapterIndex, restorePage: target.pageInChapter)
         isMenuVisible = false
     }
 
@@ -418,9 +630,32 @@ final class IPhoneEPUBReaderStore {
         isMenuVisible = false
     }
 
+    func requestReaderDismiss() {
+        guard pendingSelection == nil,
+              editingHighlightId == nil,
+              editingNoteId == nil else { return }
+        requestDismiss = true
+    }
+
+    func cancelPageCalculation() {
+        pageCalculator?.cancel()
+    }
+
+    func updateVisibleViewport(width: Int, height: Int) {
+        let normalizedWidth = max(0, width)
+        let normalizedHeight = max(0, height)
+        guard normalizedWidth > 0, normalizedHeight > 0 else { return }
+        guard normalizedWidth != viewportWidth || normalizedHeight != viewportHeight else { return }
+        viewportWidth = normalizedWidth
+        viewportHeight = normalizedHeight
+        invalidatePageCountsAndRecalculate()
+    }
+
     func dismissSelection() {
         pendingSelection = nil
         editingHighlightId = nil
+        editingHighlightSource = nil
+        editingNoteId = nil
         webView?.evaluateJavaScript("window.getSelection && window.getSelection().removeAllRanges();", completionHandler: nil)
     }
 
@@ -436,6 +671,13 @@ final class IPhoneEPUBReaderStore {
 
     func dismissNoteEditing() {
         editingNoteId = nil
+    }
+
+    var pageCounterText: String {
+        if let globalPage, let totalBookPages, totalBookPages > 0 {
+            return "\(globalPage) из \(totalBookPages)"
+        }
+        return "\(pageInChapter + 1) из \(totalInChapter)"
     }
 
     // MARK: - Private helpers
@@ -476,6 +718,65 @@ final class IPhoneEPUBReaderStore {
         return v
     }
 
+    private func normalizedRange(_ start: Int, _ end: Int) -> (start: Int, end: Int) {
+        let lower = max(0, min(start, end))
+        let upper = max(0, max(start, end))
+        return (lower, upper)
+    }
+
+    private func overlappingHighlight(for selection: EPUBTextSelection) -> Highlight? {
+        overlappingHighlight(start: selection.startOffset, end: selection.endOffset)
+    }
+
+    private func overlappingHighlight(start: Int, end: Int) -> Highlight? {
+        let range = normalizedRange(start, end)
+        guard range.end > range.start else { return nil }
+        return highlights.first { h in
+            guard isCurrentChapter(h.cfiStart),
+                  isCurrentChapter(h.cfiEnd),
+                  let existingStart = offsetFromCFI(h.cfiStart),
+                  let existingEnd = offsetFromCFI(h.cfiEnd) else {
+                return false
+            }
+            let existing = normalizedRange(existingStart, existingEnd)
+            return existing.start < range.end && range.start < existing.end
+        }
+    }
+
+    private func highlightSelectionKey(href: String, start: Int, end: Int) -> String {
+        let range = normalizedRange(start, end)
+        return "\(EPUBBook.normalizeHref(href)):\(range.start)-\(range.end)"
+    }
+
+    private func highlightNoteDraft(for h: Highlight) -> IPhoneTextNoteDraft? {
+        guard let start = offsetFromCFI(h.cfiStart), let end = offsetFromCFI(h.cfiEnd) else { return nil }
+        let range = normalizedRange(start, end)
+        return IPhoneTextNoteDraft(
+            kind: .highlight,
+            highlightId: h.id,
+            cfiAnchor: h.cfiStart,
+            selectedText: h.selectedText,
+            renderStartOffset: range.start,
+            renderEndOffset: max(range.start + 1, range.end)
+        )
+    }
+
+    private func currentPageStartOffset() async -> Int {
+        guard let webView else { return 0 }
+        let js = "window.__reader && window.__reader.currentPageStartOffset ? window.__reader.currentPageStartOffset() : 0;"
+        return await withCheckedContinuation { continuation in
+            webView.evaluateJavaScript(js) { result, _ in
+                if let offset = result as? Int {
+                    continuation.resume(returning: max(0, offset))
+                } else if let offset = result as? Double {
+                    continuation.resume(returning: max(0, Int(offset)))
+                } else {
+                    continuation.resume(returning: 0)
+                }
+            }
+        }
+    }
+
     private func hlJS(id: String, start: Int, end: Int, color: String) -> String {
         let safeId = jsEscapeString(id)
         return "{\"id\":\"\(safeId)\",\"startOffset\":\(start),\"endOffset\":\(end),\"color\":\"\(color)\"}"
@@ -500,6 +801,7 @@ final class IPhoneEPUBReaderStore {
         currentChapterIndex = index
         pageInChapter = 0
         totalInChapter = 1
+        updateGlobalPage()
         pendingRestorePage = restorePage
         chapterTitle = chapterLabel(at: index, in: epub)
         webView?.loadFileURL(epub.chapters[index].fileURL, allowingReadAccessTo: epub.rootDir)
@@ -516,7 +818,131 @@ final class IPhoneEPUBReaderStore {
     private func syncPage(_ page: Int, total: Int) {
         pageInChapter = page
         totalInChapter = max(1, total)
+        updateGlobalPage()
         saveProgress()
+    }
+
+    private func goToOffset(chapterIndex: Int, offset: Int) {
+        guard let epub = epubBook, epub.chapters.indices.contains(chapterIndex) else { return }
+        let normalizedOffset = max(0, offset)
+        offsetNavigationToken += 1
+        let token = offsetNavigationToken
+        if chapterIndex == currentChapterIndex {
+            pendingOffsetNavigation = nil
+            evaluateGoToOffset(normalizedOffset, token: token)
+        } else {
+            pendingOffsetNavigation = (chapterIndex, normalizedOffset, token)
+            loadChapter(at: chapterIndex, restorePage: nil)
+        }
+    }
+
+    private func applyPendingOffsetNavigationIfNeeded() {
+        guard let pending = pendingOffsetNavigation,
+              pending.chapterIndex == currentChapterIndex else { return }
+        pendingOffsetNavigation = nil
+        evaluateGoToOffset(pending.offset, token: pending.token)
+    }
+
+    private func evaluateGoToOffset(_ offset: Int, token: Int) {
+        let js = """
+        (() => {
+            window.__readerPendingOffsetToken = \(token);
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                setTimeout(() => {
+                    if (window.__readerPendingOffsetToken !== \(token)) return;
+                    if (window.__reader && typeof window.__reader.goToOffset === 'function') {
+                        window.__reader.goToOffset(\(offset));
+                    }
+                }, 160);
+            }));
+        })();
+        """
+        webView?.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    private func isReadyForCurrentChapter(_ data: [String: Any]) -> Bool {
+        guard let href = data["href"] as? String,
+              let epub = epubBook,
+              epub.chapters.indices.contains(currentChapterIndex) else {
+            return true
+        }
+        return URL(string: href)?.standardizedFileURL == epub.chapters[currentChapterIndex].fileURL.standardizedFileURL
+    }
+
+    private func updateGlobalPage() {
+        guard EPUBPageMapper.isValid(counts: chapterPageCounts, chapterCount: epubBook?.chapters.count ?? 0),
+              let page = EPUBPageMapper.globalPage(
+                chapterIndex: currentChapterIndex,
+                pageInChapter: pageInChapter,
+                counts: chapterPageCounts
+              ) else {
+            globalPage = nil
+            totalBookPages = nil
+            return
+        }
+        globalPage = page
+        totalBookPages = chapterPageCounts.reduce(0, +)
+    }
+
+    private func invalidatePageCountsAndRecalculate() {
+        chapterPageCounts = []
+        globalPage = nil
+        totalBookPages = nil
+        pageCalculationState = .idle
+        pageCalculator?.cancel()
+        if let epub = epubBook {
+            startPageCalculationIfPossible(for: epub)
+        }
+    }
+
+    private func startPageCalculationIfPossible(for epub: any BookContentProvider) {
+        guard !epub.chapters.isEmpty else { return }
+        guard viewportWidth > 0, viewportHeight > 0 else { return }
+        let layoutKey = BookPageLayoutKey(
+            bookId: book.id,
+            bookFileSignature: bookFileSignature(),
+            fontSize: fontSize,
+            lineHeight: lineHeight,
+            viewportWidth: viewportWidth,
+            viewportHeight: viewportHeight
+        )
+        guard pageCalculationKey != layoutKey || pageCalculationState != .calculating else { return }
+        pageCalculationKey = layoutKey
+
+        if let cached = pageCountCache.load(layoutKey: layoutKey, chapterCount: epub.chapters.count) {
+            chapterPageCounts = cached
+            pageCalculationState = .ready
+            updateGlobalPage()
+            return
+        }
+
+        pageCalculationState = .calculating
+        let calculator = pageCalculator ?? BookPageCalculator()
+        pageCalculator = calculator
+        calculator.calculate(book: epub, layoutKey: layoutKey) { [weak self] counts in
+            guard let self else { return }
+            guard self.pageCalculationKey == layoutKey,
+                  EPUBPageMapper.isValid(counts: counts, chapterCount: epub.chapters.count) else {
+                self.pageCalculationState = .failed
+                return
+            }
+            self.chapterPageCounts = counts
+            self.pageCountCache.save(counts: counts, layoutKey: layoutKey, chapterCount: epub.chapters.count)
+            self.pageCalculationState = .ready
+            self.updateGlobalPage()
+        }
+    }
+
+    private func bookFileSignature() -> String {
+        let candidateURL = FileManager.default.fileExists(atPath: book.filePath)
+            ? URL(fileURLWithPath: book.filePath)
+            : bookURL
+        guard let values = try? candidateURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]) else {
+            return "unknown"
+        }
+        let size = values.fileSize ?? 0
+        let modified = values.contentModificationDate?.timeIntervalSince1970 ?? 0
+        return "\(size)-\(Int(modified.rounded()))"
     }
 
     private func chapterLabel(at index: Int, in epub: any BookContentProvider) -> String {

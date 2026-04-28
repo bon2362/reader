@@ -156,6 +156,8 @@
 		BB000005000000000000BB05 /* IPhoneReaderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000006000000000000BB06 /* IPhoneReaderSettingsView.swift */; };
 		BB000007000000000000BB07 /* IPhoneReaderSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000008000000000000BB08 /* IPhoneReaderSearchView.swift */; };
 		AA000008000000000000AA08 /* BridgeTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAFBAF0642BDFF843D5A322D /* BridgeTypes.swift */; };
+		CC000001000000000000CC01 /* BookPageCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002000000000000CC02 /* BookPageCalculator.swift */; };
+		CC000003000000000000CC03 /* EPUBPageMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000004000000000000CC04 /* EPUBPageMapperTests.swift */; };
 		D8FCF7F78E5141DD9C75A2FF /* BookContentProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2800492F853C4C85A46FC501 /* BookContentProvider.swift */; };
 		D322653647F04F1B87B63D7F /* BookContentProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2800492F853C4C85A46FC501 /* BookContentProvider.swift */; };
 		3514C05FE45943C7AA3EA854 /* FB2Book.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5995AD5ABD466D92480DCA /* FB2Book.swift */; };
@@ -297,6 +299,8 @@
 		BB000004000000000000BB04 /* IPhoneAnnotationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneAnnotationsView.swift; sourceTree = "<group>"; };
 		BB000006000000000000BB06 /* IPhoneReaderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneReaderSettingsView.swift; sourceTree = "<group>"; };
 		BB000008000000000000BB08 /* IPhoneReaderSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneReaderSearchView.swift; sourceTree = "<group>"; };
+		CC000002000000000000CC02 /* BookPageCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookPageCalculator.swift; sourceTree = "<group>"; };
+		CC000004000000000000CC04 /* EPUBPageMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBPageMapperTests.swift; sourceTree = "<group>"; };
 		2800492F853C4C85A46FC501 /* BookContentProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookContentProvider.swift; sourceTree = "<group>"; };
 		7D5995AD5ABD466D92480DCA /* FB2Book.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FB2Book.swift; sourceTree = "<group>"; };
 		2C9D23367192469EABEC592E /* FB2BookLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FB2BookLoader.swift; sourceTree = "<group>"; };
@@ -459,6 +463,7 @@
 				AA000003000000000000AA03 /* IPhoneEPUBWebView.swift */,
 				AA000005000000000000AA05 /* IPhoneEPUBReaderStore.swift */,
 				AA000007000000000000AA07 /* IPhoneEPUBReaderView.swift */,
+				CC000002000000000000CC02 /* BookPageCalculator.swift */,
 				BB000002000000000000BB02 /* IPhoneTOCView.swift */,
 				BB000004000000000000BB04 /* IPhoneAnnotationsView.swift */,
 				BB000006000000000000BB06 /* IPhoneReaderSettingsView.swift */,
@@ -646,6 +651,7 @@
 				D681B1E40DBB696EAEC266F5 /* AnnotationPanelStoreTests.swift */,
 				16B0B19D9B725EE4EE3F0085 /* BookImporterTests.swift */,
 				63EE7BF553559A42AA3102B7 /* EPUBBookTests.swift */,
+				CC000004000000000000CC04 /* EPUBPageMapperTests.swift */,
 				D8331B568DE5138C1F480D2F /* EPUBTestFactory.swift */,
 				8CCB8950AC5E861500083538 /* HighlightsStoreTests.swift */,
 				D0F2636E3DEA3B71C83A92EF /* LibraryStoreTests.swift */,
@@ -916,6 +922,7 @@
 				BB000003000000000000BB03 /* IPhoneAnnotationsView.swift in Sources */,
 				BB000005000000000000BB05 /* IPhoneReaderSettingsView.swift in Sources */,
 				BB000007000000000000BB07 /* IPhoneReaderSearchView.swift in Sources */,
+				CC000001000000000000CC01 /* BookPageCalculator.swift in Sources */,
 				AA000008000000000000AA08 /* BridgeTypes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -934,6 +941,7 @@
 				8843606CA49C3BDC29CC9FCB /* AnnotationRepositoryTests.swift in Sources */,
 				2FEBDB8C7DC3E1C626C5811E /* BookImporterTests.swift in Sources */,
 				497A59553BC7FD9C8D03C5AC /* EPUBBookTests.swift in Sources */,
+				CC000003000000000000CC03 /* EPUBPageMapperTests.swift in Sources */,
 				B0AC57CCBC8523AA975A5526 /* EPUBTestFactory.swift in Sources */,
 				8300A26B1E184D4281016F21 /* HighlightsStoreTests.swift in Sources */,
 				F63A2CD0B83904010E02E8C8 /* LibraryRepositoryTests.swift in Sources */,
@@ -978,6 +986,7 @@
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "slow reader открывает PDF-файлы из выбранного места.";
 				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1108,6 +1117,7 @@
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "slow reader открывает PDF-файлы из выбранного места.";
 				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

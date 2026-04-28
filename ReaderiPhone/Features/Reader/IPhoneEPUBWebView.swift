@@ -73,11 +73,23 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
         swipeRight.delegate = context.coordinator
         webView.addGestureRecognizer(swipeRight)
 
+        let swipeDown = UISwipeGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleSwipeDown)
+        )
+        swipeDown.direction = .down
+        swipeDown.delegate = context.coordinator
+        webView.addGestureRecognizer(swipeDown)
+
         store.attachWebView(webView)
         return webView
     }
 
-    func updateUIView(_ uiView: WKWebView, context: Context) {}
+    func updateUIView(_ uiView: WKWebView, context: Context) {
+        let width = Int(uiView.bounds.width.rounded())
+        let height = Int(uiView.bounds.height.rounded())
+        store.updateVisibleViewport(width: width, height: height)
+    }
 
     static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: "native")
@@ -99,6 +111,10 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
 
         @objc func handleSwipeRight(_ sender: UISwipeGestureRecognizer) {
             store?.goToPreviousPage()
+        }
+
+        @objc func handleSwipeDown(_ sender: UISwipeGestureRecognizer) {
+            store?.requestReaderDismiss()
         }
 
         // Allow swipe gestures to fire alongside WebKit's own recognizers
@@ -145,7 +161,7 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
             style.textContent = [
                 'html, body { margin:0; padding:0; overflow: hidden; height: 100vh; width: 100vw; background: transparent; color: #000;',
                 '  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", serif;',
-                '  font-size: 17px; line-height: 1.65; text-align: justify;',
+                '  font-size: 17px; line-height: 1.65; text-align: start;',
                 '  -webkit-user-select: text; user-select: text;',
                 '}',
                 '#__reader_wrap { padding: 56px 24px; box-sizing: border-box;',
@@ -153,6 +169,7 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 '  height: 100vh; width: 100vw;',
                 '  will-change: transform; transition: none;',
                 '}',
+                '#__reader_wrap p, #__reader_wrap li, #__reader_wrap blockquote { text-align: start !important; }',
                 'img, svg, video { max-width: 100% !important; max-height: 90vh !important; height: auto !important; }',
                 'mark.reader-hl { border-radius: 2px; padding: 0 1px; cursor: pointer; }',
                 'mark.reader-note { background: transparent !important; color: inherit; border-bottom: 2px dashed rgba(255, 180, 0, 0.9); cursor: pointer; padding-bottom: 1px; }',
@@ -188,6 +205,7 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 page: currentPage(),
                 totalPages: totalPages(),
                 iw: window.innerWidth,
+                ih: window.innerHeight,
                 sw: __wrap ? __wrap.scrollWidth : 0
             });
         }
@@ -227,6 +245,53 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 var r = rng.getBoundingClientRect();
                 var target = Math.max(0, Math.floor(r.left / pageSize()));
                 this.goToPage(target);
+            },
+            currentPageStartOffset: function() {
+                if (!__wrap) return 0;
+                var nodes = collectTextNodes();
+                var targetLeft = __page * pageSize();
+                var offset = 0;
+                function charRight(node, index) {
+                    try {
+                        var rng = document.createRange();
+                        var end = Math.min(node.nodeValue.length, index + 1);
+                        rng.setStart(node, index);
+                        rng.setEnd(node, end);
+                        var rects = rng.getClientRects();
+                        if (rects && rects.length > 0) {
+                            return rects[rects.length - 1].right;
+                        }
+                        return rng.getBoundingClientRect().right;
+                    } catch (e) {
+                        return -Infinity;
+                    }
+                }
+                try {
+                    __wrap.style.transform = 'translateX(0px)';
+                    for (var i = 0; i < nodes.length; i++) {
+                        var n = nodes[i];
+                        var len = n.nodeValue.length;
+                        if (len > 0) {
+                            var lastRight = charRight(n, len - 1);
+                            if (lastRight >= targetLeft) {
+                                var low = 0, high = len - 1;
+                                while (low < high) {
+                                    var mid = Math.floor((low + high) / 2);
+                                    if (charRight(n, mid) >= targetLeft) {
+                                        high = mid;
+                                    } else {
+                                        low = mid + 1;
+                                    }
+                                }
+                                return offset + low;
+                            }
+                        }
+                        offset += len;
+                    }
+                    return offset;
+                } finally {
+                    applyTransform();
+                }
             },
             applyHighlights: function(list) {
                 clearAllHighlights();
@@ -578,7 +643,7 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 requestAnimationFrame(function() {
                     setTimeout(function() {
                         reportPage();
-                        post({type: 'ready'});
+                        post({type: 'ready', href: window.location.href});
                     }, 120);
                 });
             });

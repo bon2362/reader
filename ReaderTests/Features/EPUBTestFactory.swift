@@ -7,6 +7,7 @@ enum EPUBTestFactory {
         title: String = "Test Book",
         author: String? = "Test Author",
         includeCover: Bool = false,
+        chapterHeadHTML: String = "",
         chapterBodyHTML: String = "<p>hi</p>"
     ) throws -> URL {
         let tmp = FileManager.default.temporaryDirectory
@@ -57,7 +58,11 @@ enum EPUBTestFactory {
         </package>
         """
         try addText(to: archive, path: "OEBPS/content.opf", text: opf)
-        try addText(to: archive, path: "OEBPS/chap1.xhtml", text: "<html><body>\(chapterBodyHTML)</body></html>")
+        try addText(
+            to: archive,
+            path: "OEBPS/chap1.xhtml",
+            text: "<html><head>\(chapterHeadHTML)</head><body>\(chapterBodyHTML)</body></html>"
+        )
 
         if includeCover {
             let png = tinyPNG()

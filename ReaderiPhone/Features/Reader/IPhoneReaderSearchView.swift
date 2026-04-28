@@ -15,7 +15,7 @@ struct IPhoneReaderSearchView: View {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
-                    TextField("Поиск в текущей главе...", text: $query)
+                    TextField("Поиск по книге...", text: $query)
                         .textFieldStyle(.plain)
                         .submitLabel(.search)
                         .onSubmit { performSearch() }
@@ -49,7 +49,7 @@ struct IPhoneReaderSearchView: View {
                     ContentUnavailableView(
                         "Ничего не найдено",
                         systemImage: "magnifyingglass",
-                        description: Text("По запросу «\(query)» в текущей главе ничего не найдено.")
+                        description: Text("По запросу «\(query)» в книге ничего не найдено.")
                     )
                     Spacer()
                 } else if !results.isEmpty {
@@ -57,10 +57,13 @@ struct IPhoneReaderSearchView: View {
                         Section("\(results.count) совпадений") {
                             ForEach(results) { result in
                                 Button {
-                                    store.goToSearchResult(offset: result.offset)
+                                    store.goToSearchResult(result)
                                     dismiss()
                                 } label: {
                                     VStack(alignment: .leading, spacing: 4) {
+                                        Text(result.chapterTitle)
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.secondary)
                                         highlightedSnippet(result.snippet, query: query)
                                             .font(.body)
                                             .lineLimit(3)

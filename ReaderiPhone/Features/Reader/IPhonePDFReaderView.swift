@@ -7,10 +7,16 @@ struct IPhonePDFReaderView: View {
 
     private let openedBook: IPhoneOpenedBook
     private let libraryRepository: LibraryRepositoryProtocol
+    private let onClose: (() -> Void)?
 
-    init(openedBook: IPhoneOpenedBook, libraryRepository: LibraryRepositoryProtocol) {
+    init(
+        openedBook: IPhoneOpenedBook,
+        libraryRepository: LibraryRepositoryProtocol,
+        onClose: (() -> Void)? = nil
+    ) {
         self.openedBook = openedBook
         self.libraryRepository = libraryRepository
+        self.onClose = onClose
     }
 
     var body: some View {
@@ -39,19 +45,35 @@ struct IPhonePDFReaderView: View {
                     pageControls(store: store)
                 }
                 .overlay(alignment: .top) {
-                    if let errorMessage = store.currentErrorMessage {
-                        Button {
-                            store.dismissError()
-                        } label: {
-                            Label(errorMessage, systemImage: "xmark.circle.fill")
-                                .font(.footnote)
-                                .labelStyle(.titleAndIcon)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(.thinMaterial, in: Capsule())
+                    VStack(spacing: 8) {
+                        if let onClose {
+                            HStack {
+                                Button(action: onClose) {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .frame(width: 44, height: 44)
+                                }
+                                .buttonStyle(.plain)
+
+                                Spacer()
+                            }
+                            .padding(.horizontal, 8)
+                            .safeAreaPadding(.top)
                         }
-                        .buttonStyle(.plain)
-                        .padding(.top, 8)
+
+                        if let errorMessage = store.currentErrorMessage {
+                            Button {
+                                store.dismissError()
+                            } label: {
+                                Label(errorMessage, systemImage: "xmark.circle.fill")
+                                    .font(.footnote)
+                                    .labelStyle(.titleAndIcon)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(.thinMaterial, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
                 .overlay(alignment: .bottom) {
@@ -68,6 +90,7 @@ struct IPhonePDFReaderView: View {
             }
         }
         .background(Color(uiColor: .systemBackground))
+        .ignoresSafeArea()
         .navigationTitle(openedBook.book.title)
         .navigationBarTitleDisplayMode(.inline)
         .task {

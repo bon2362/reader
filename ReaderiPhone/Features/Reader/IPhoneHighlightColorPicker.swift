@@ -6,12 +6,17 @@ struct IPhoneHighlightColorPicker: View {
     var activeColor: HighlightColor? = nil
     var showDelete: Bool = false
     var onDelete: (() -> Void)? = nil
+    var onNote: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
             ForEach(HighlightColor.allCases, id: \.self) { color in
                 Button {
-                    onPick(color)
+                    if activeColor == color, let onDelete {
+                        onDelete()
+                    } else {
+                        onPick(color)
+                    }
                 } label: {
                     Circle()
                         .fill(swatch(for: color))
@@ -28,6 +33,21 @@ struct IPhoneHighlightColorPicker: View {
                 .accessibilityLabel(colorName(color))
             }
 
+            if let onNote {
+                Divider()
+                    .frame(height: 22)
+
+                Button {
+                    onNote()
+                } label: {
+                    Image(systemName: "note.text")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Добавить заметку")
+            }
+
             if showDelete {
                 Button(role: .destructive) {
                     onDelete?()
@@ -39,14 +59,6 @@ struct IPhoneHighlightColorPicker: View {
                 .buttonStyle(.plain)
             }
 
-            if let onDismiss {
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
