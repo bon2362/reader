@@ -19,11 +19,11 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
             (function() {
                 var existing = document.querySelector('meta[name="viewport"]');
                 if (existing) {
-                    existing.setAttribute('content', 'width=device-width, initial-scale=1.0');
+                    existing.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
                 } else {
                     var meta = document.createElement('meta');
                     meta.name = 'viewport';
-                    meta.content = 'width=device-width, initial-scale=1.0';
+                    meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
                     var head = document.head || document.documentElement;
                     if (head) head.insertBefore(meta, head.firstChild);
                 }
@@ -33,6 +33,20 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
             forMainFrameOnly: true
         )
         config.userContentController.addUserScript(viewportScript)
+
+        let earlyStyle = WKUserScript(
+            source: """
+            (function() {
+                var s = document.createElement('style');
+                s.textContent = 'html,body{background:transparent!important;margin:0;padding:0}';
+                var head = document.head || document.documentElement;
+                if (head) head.appendChild(s);
+            })();
+            """,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        config.userContentController.addUserScript(earlyStyle)
 
         let userScript = WKUserScript(
             source: IPhoneEPUBWebView.readerJS,
@@ -53,6 +67,13 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = false
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.bounces = false
+        webView.scrollView.bouncesZoom = false
+        webView.scrollView.minimumZoomScale = 1.0
+        webView.scrollView.maximumZoomScale = 1.0
+        webView.scrollView.pinchGestureRecognizer?.isEnabled = false
+        webView.scrollView.delegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = false
         if #available(iOS 16.4, *) { webView.isInspectable = true }
 
@@ -88,7 +109,14 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
     func updateUIView(_ uiView: WKWebView, context: Context) {
         let width = Int(uiView.bounds.width.rounded())
         let height = Int(uiView.bounds.height.rounded())
-        store.updateVisibleViewport(width: width, height: height)
+        let safeAreaTop = Int(uiView.safeAreaInsets.top.rounded())
+        let safeAreaBottom = Int(uiView.safeAreaInsets.bottom.rounded())
+        store.updateVisibleViewport(
+            width: width,
+            height: height,
+            safeAreaTop: safeAreaTop,
+            safeAreaBottom: safeAreaBottom
+        )
     }
 
     static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
@@ -97,7 +125,7 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate, UIScrollViewDelegate {
         var handler: MessageHandler?
         private weak var store: IPhoneEPUBReaderStore?
 
@@ -122,6 +150,16 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
             _ gestureRecognizer: UIGestureRecognizer,
             shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
         ) -> Bool { true }
+
+        nonisolated func viewForZooming(in scrollView: UIScrollView) -> UIView? { nil }
+
+        nonisolated func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            DispatchQueue.main.async {
+                if scrollView.zoomScale != 1.0 {
+                    scrollView.setZoomScale(1.0, animated: false)
+                }
+            }
+        }
     }
 
     final class MessageHandler: NSObject, WKScriptMessageHandler {
@@ -164,7 +202,7 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 '  font-size: 17px; line-height: 1.65; text-align: start;',
                 '  -webkit-user-select: text; user-select: text;',
                 '}',
-                '#__reader_wrap { padding: 56px 24px; box-sizing: border-box;',
+                '#__reader_wrap { padding: calc(env(safe-area-inset-top) + var(--reader-safe-area-top, 0px) + 56px) 24px calc(env(safe-area-inset-bottom) + var(--reader-safe-area-bottom, 0px) + 56px) 24px; box-sizing: border-box;',
                 '  column-width: calc(100vw - 48px); column-gap: 48px; column-fill: auto;',
                 '  height: 100vh; width: 100vw;',
                 '  will-change: transform; transition: none;',
@@ -558,14 +596,23 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 var offs = rangeOffsets(rng);
                 if (!offs) return;
                 var rects = rng.getClientRects();
-                var rect = null;
+                var firstRect = null;
+                var lastRect = null;
                 if (rects && rects.length > 0) {
-                    // Use the last rect (caret tail) for picker anchor
-                    var r = rects[rects.length - 1];
-                    rect = {x: r.left, y: r.top, w: r.width, h: r.height};
+                    var f = rects[0];
+                    var l = rects[rects.length - 1];
+                    firstRect = {x: f.left, y: f.top, w: f.width, h: f.height};
+                    lastRect = {x: l.left, y: l.top, w: l.width, h: l.height};
                 }
                 hadSelection = true;
-                post({type: 'textSelected', startOffset: offs.start, endOffset: offs.end, text: text, rect: rect});
+                post({
+                    type: 'textSelected',
+                    startOffset: offs.start,
+                    endOffset: offs.end,
+                    text: text,
+                    rect: lastRect,
+                    firstRect: firstRect
+                });
             }, 200);
         }, true);
 

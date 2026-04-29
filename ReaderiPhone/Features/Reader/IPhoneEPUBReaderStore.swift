@@ -11,6 +11,7 @@ struct EPUBTextSelection {
     let endOffset: Int
     let text: String
     let rect: CGRect
+    let firstRect: CGRect
 }
 
 struct IPhoneTextNoteDraft: Identifiable, Equatable {
@@ -71,6 +72,7 @@ final class IPhoneEPUBReaderStore {
     var chapterPageCounts: [Int] = []
     var pageCalculationState: BookPageCalculationState = .idle
     var isLoading: Bool = true
+    var isChapterReady: Bool = false
     var errorMessage: String?
 
     // MARK: UI overlay state (driven by JS messages)
@@ -125,8 +127,11 @@ final class IPhoneEPUBReaderStore {
     private var pageCalculationKey: BookPageLayoutKey?
     private var viewportWidth: Int = 0
     private var viewportHeight: Int = 0
+    private var viewportSafeAreaTop: Int = 0
+    private var viewportSafeAreaBottom: Int = 0
     private var saveProgressDebounceTask: Task<Void, Never>?
     private var highlightSelectionsInFlight = Set<String>()
+    private var chapterLoadToken = 0
 
     // MARK: - Init
 
@@ -235,6 +240,7 @@ final class IPhoneEPUBReaderStore {
 
         case "ready":
             guard isReadyForCurrentChapter(data) else { return }
+            let readyToken = chapterLoadToken
             if let page = pendingRestorePage {
                 pendingRestorePage = nil
                 if page == .max {
@@ -246,7 +252,8 @@ final class IPhoneEPUBReaderStore {
             }
             applyAppearanceSettings()
             applyAnnotationsToCurrentChapter()
-            applyPendingOffsetNavigationIfNeeded()
+            let waitsForOffsetNavigation = applyPendingOffsetNavigationIfNeeded()
+            scheduleChapterReady(token: readyToken, waitsForOffsetNavigation: waitsForOffsetNavigation)
 
         case "pageChanged":
             if let page = data["page"] as? Int, let total = data["totalPages"] as? Int {
@@ -264,21 +271,15 @@ final class IPhoneEPUBReaderStore {
             let startOffset = data["startOffset"] as? Int ?? 0
             let endOffset   = data["endOffset"]   as? Int ?? 0
             let text        = data["text"]         as? String ?? ""
-            var rect = CGRect.zero
-            if let r = data["rect"] as? [String: Any] {
-                rect = CGRect(
-                    x: r["x"] as? Double ?? 0,
-                    y: r["y"] as? Double ?? 0,
-                    width:  r["w"] as? Double ?? 0,
-                    height: r["h"] as? Double ?? 0
-                )
-            }
+            let rect = rectFromMessage(data["rect"])
+            let firstRect = rectFromMessage(data["firstRect"]) ?? rect ?? .zero
             let normalized = normalizedRange(startOffset, endOffset)
             let selection = EPUBTextSelection(
                 startOffset: normalized.start,
                 endOffset: normalized.end,
                 text: text,
-                rect: rect
+                rect: rect ?? firstRect,
+                firstRect: firstRect
             )
             pendingSelection = selection
             if let overlapping = overlappingHighlight(for: selection) {
@@ -641,13 +642,20 @@ final class IPhoneEPUBReaderStore {
         pageCalculator?.cancel()
     }
 
-    func updateVisibleViewport(width: Int, height: Int) {
+    func updateVisibleViewport(width: Int, height: Int, safeAreaTop: Int? = nil, safeAreaBottom: Int? = nil) {
         let normalizedWidth = max(0, width)
         let normalizedHeight = max(0, height)
+        let normalizedSafeAreaTop = max(0, safeAreaTop ?? viewportSafeAreaTop)
+        let normalizedSafeAreaBottom = max(0, safeAreaBottom ?? viewportSafeAreaBottom)
         guard normalizedWidth > 0, normalizedHeight > 0 else { return }
-        guard normalizedWidth != viewportWidth || normalizedHeight != viewportHeight else { return }
+        guard normalizedWidth != viewportWidth
+            || normalizedHeight != viewportHeight
+            || normalizedSafeAreaTop != viewportSafeAreaTop
+            || normalizedSafeAreaBottom != viewportSafeAreaBottom else { return }
         viewportWidth = normalizedWidth
         viewportHeight = normalizedHeight
+        viewportSafeAreaTop = normalizedSafeAreaTop
+        viewportSafeAreaBottom = normalizedSafeAreaBottom
         invalidatePageCountsAndRecalculate()
     }
 
@@ -680,7 +688,30 @@ final class IPhoneEPUBReaderStore {
         return "\(pageInChapter + 1) из \(totalInChapter)"
     }
 
+    var themeBackgroundColor: Color {
+        switch readerTheme {
+        case .light:
+            return Color(red: 0xfa / 255.0, green: 0xf8 / 255.0, blue: 0xf4 / 255.0)
+        case .sepia:
+            return Color(red: 0xf5 / 255.0, green: 0xef / 255.0, blue: 0xe0 / 255.0)
+        case .dark:
+            return Color(red: 0x1a / 255.0, green: 0x1a / 255.0, blue: 0x1a / 255.0)
+        case .auto:
+            return Color(UIColor.systemBackground)
+        }
+    }
+
     // MARK: - Private helpers
+
+    private func rectFromMessage(_ value: Any?) -> CGRect? {
+        guard let r = value as? [String: Any] else { return nil }
+        return CGRect(
+            x: r["x"] as? Double ?? 0,
+            y: r["y"] as? Double ?? 0,
+            width: r["w"] as? Double ?? 0,
+            height: r["h"] as? Double ?? 0
+        )
+    }
 
     private func handleLinkTapped(href: String) {
         if href.hasPrefix("#") {
@@ -804,6 +835,8 @@ final class IPhoneEPUBReaderStore {
         updateGlobalPage()
         pendingRestorePage = restorePage
         chapterTitle = chapterLabel(at: index, in: epub)
+        chapterLoadToken += 1
+        isChapterReady = false
         webView?.loadFileURL(epub.chapters[index].fileURL, allowingReadAccessTo: epub.rootDir)
     }
 
@@ -836,11 +869,13 @@ final class IPhoneEPUBReaderStore {
         }
     }
 
-    private func applyPendingOffsetNavigationIfNeeded() {
+    @discardableResult
+    private func applyPendingOffsetNavigationIfNeeded() -> Bool {
         guard let pending = pendingOffsetNavigation,
-              pending.chapterIndex == currentChapterIndex else { return }
+              pending.chapterIndex == currentChapterIndex else { return false }
         pendingOffsetNavigation = nil
         evaluateGoToOffset(pending.offset, token: pending.token)
+        return true
     }
 
     private func evaluateGoToOffset(_ offset: Int, token: Int) {
@@ -858,6 +893,19 @@ final class IPhoneEPUBReaderStore {
         })();
         """
         webView?.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    private func scheduleChapterReady(token: Int, waitsForOffsetNavigation: Bool) {
+        let delay: Duration = waitsForOffsetNavigation ? .milliseconds(360) : .milliseconds(180)
+        Task { [weak self] in
+            do {
+                try await Task.sleep(for: delay)
+            } catch {
+                return
+            }
+            guard let self, self.chapterLoadToken == token else { return }
+            self.isChapterReady = true
+        }
     }
 
     private func isReadyForCurrentChapter(_ data: [String: Any]) -> Bool {
@@ -904,7 +952,9 @@ final class IPhoneEPUBReaderStore {
             fontSize: fontSize,
             lineHeight: lineHeight,
             viewportWidth: viewportWidth,
-            viewportHeight: viewportHeight
+            viewportHeight: viewportHeight,
+            safeAreaTop: viewportSafeAreaTop,
+            safeAreaBottom: viewportSafeAreaBottom
         )
         guard pageCalculationKey != layoutKey || pageCalculationState != .calculating else { return }
         pageCalculationKey = layoutKey

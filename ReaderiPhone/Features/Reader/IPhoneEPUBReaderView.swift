@@ -30,9 +30,14 @@ struct IPhoneEPUBReaderView: View {
 
     var body: some View {
         ZStack {
+            store.themeBackgroundColor
+                .ignoresSafeArea()
+
             // MARK: Reading content
             IPhoneEPUBWebView(store: store)
                 .ignoresSafeArea()
+                .opacity(store.isChapterReady ? 1 : 0)
+                .animation(.easeIn(duration: 0.12), value: store.isChapterReady)
 
             if store.isLoading {
                 Color(UIColor.systemBackground).ignoresSafeArea()
@@ -74,7 +79,6 @@ struct IPhoneEPUBReaderView: View {
                 }
             }
         }
-        .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.2), value: store.isMenuVisible)
         .animation(.easeInOut(duration: 0.16), value: isActionTrayVisible)
         .animation(.easeInOut(duration: 0.25), value: isTOCVisible)
@@ -306,11 +310,14 @@ struct IPhoneEPUBReaderView: View {
         GeometryReader { geo in
             let pickerHeight: CGFloat = 52
             let gap: CGFloat = 10
+            let safeTop = geo.safeAreaInsets.top + 8
+            let safeBottom = geo.safeAreaInsets.bottom + 8
             let bottomY = sel.rect.maxY + gap
-            let topY = sel.rect.minY - pickerHeight - gap
-            let canFitBelow = bottomY + pickerHeight <= geo.size.height - 20
-            let unclampedY = canFitBelow ? bottomY : topY
-            let clampedY = min(max(20, unclampedY), geo.size.height - pickerHeight - 20)
+            let topY = sel.firstRect.minY - pickerHeight - gap
+            let canFitBelow = bottomY + pickerHeight <= geo.size.height - safeBottom
+            let canFitAbove = topY >= safeTop
+            let unclampedY = canFitBelow ? bottomY : (canFitAbove ? topY : (geo.size.height - pickerHeight) / 2)
+            let clampedY = min(max(safeTop, unclampedY), geo.size.height - pickerHeight - safeBottom)
             let editingHighlight = store.highlightForEditingId()
 
             pickerBackdrop {

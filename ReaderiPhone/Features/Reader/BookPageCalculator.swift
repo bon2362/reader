@@ -9,6 +9,8 @@ struct BookPageLayoutKey: Codable, Equatable {
     let lineHeight: Double
     let viewportWidth: Int
     let viewportHeight: Int
+    let safeAreaTop: Int
+    let safeAreaBottom: Int
 }
 
 enum BookPageCalculationState: Equatable {
@@ -58,7 +60,7 @@ final class BookPageCountCache {
     }
 
     private func cacheURL(for key: BookPageLayoutKey) -> URL {
-        let raw = "\(key.bookId)-\(key.bookFileSignature)-\(key.fontSize)-\(key.lineHeight)-\(key.viewportWidth)x\(key.viewportHeight)"
+        let raw = "\(key.bookId)-\(key.bookFileSignature)-\(key.fontSize)-\(key.lineHeight)-\(key.viewportWidth)x\(key.viewportHeight)-safe\(key.safeAreaTop)-\(key.safeAreaBottom)"
         let safe = raw.map { ch -> Character in
             ch.isLetter || ch.isNumber || ch == "-" || ch == "." ? ch : "_"
         }
@@ -187,6 +189,8 @@ final class BookPageCalculator {
         let js = """
         (() => {
             if (!window.__reader) return 1;
+            document.documentElement.style.setProperty('--reader-safe-area-top', '\(layoutKey.safeAreaTop)px');
+            document.documentElement.style.setProperty('--reader-safe-area-bottom', '\(layoutKey.safeAreaBottom)px');
             if (typeof window.__reader.setFontSize === 'function') window.__reader.setFontSize(\(layoutKey.fontSize));
             if (typeof window.__reader.setLineHeight === 'function') window.__reader.setLineHeight(\(layoutKey.lineHeight));
             return new Promise(resolve => {
