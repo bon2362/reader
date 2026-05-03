@@ -44,6 +44,11 @@ struct EPUBSearchResult: Identifiable {
     let snippet: String
 }
 
+private struct LinkReturnPosition {
+    let chapterIndex: Int
+    let offset: Int
+}
+
 enum ReaderTheme: String, CaseIterable {
     case auto, light, sepia, dark
 
@@ -53,6 +58,18 @@ enum ReaderTheme: String, CaseIterable {
         case .light: return "Светлая"
         case .sepia: return "Сепия"
         case .dark:  return "Тёмная"
+        }
+    }
+}
+
+enum ReaderTextAlign: String, CaseIterable {
+    case start
+    case justify
+
+    var displayName: String {
+        switch self {
+        case .start: return "По левому краю"
+        case .justify: return "По ширине"
         }
     }
 }
@@ -105,10 +122,18 @@ final class IPhoneEPUBReaderStore {
             invalidatePageCountsAndRecalculate()
         }
     }
+    var textAlign: ReaderTextAlign {
+        didSet {
+            UserDefaults.standard.set(textAlign.rawValue, forKey: "reader.textAlign")
+            applyTextAlign()
+            invalidatePageCountsAndRecalculate()
+        }
+    }
 
     // Default values — kept in one place to stay in sync with JS defaults and applyAppearanceSettings
     static let defaultFontSize: Int    = 17
     static let defaultLineHeight: Double = 1.65
+    static let defaultTextAlign: ReaderTextAlign = .start
 
     let bookTitle: String
     let book: Book
@@ -120,6 +145,7 @@ final class IPhoneEPUBReaderStore {
     private var currentChapterIndex: Int = 0
     private var pendingRestorePage: Int?
     private var pendingOffsetNavigation: (chapterIndex: Int, offset: Int, token: Int)?
+    private var pendingAnchorNavigation: (chapterIndex: Int, anchor: String, token: Int)?
     private var offsetNavigationToken = 0
     private weak var webView: WKWebView?
     private let pageCountCache = BookPageCountCache()
@@ -132,6 +158,8 @@ final class IPhoneEPUBReaderStore {
     private var saveProgressDebounceTask: Task<Void, Never>?
     private var highlightSelectionsInFlight = Set<String>()
     private var chapterLoadToken = 0
+    private var linkReturnStack: [LinkReturnPosition] = []
+    private var isLinkNavigationInFlight = false
 
     // MARK: - Init
 
@@ -152,6 +180,7 @@ final class IPhoneEPUBReaderStore {
         self.readerTheme = ReaderTheme(rawValue: ud.string(forKey: "reader.theme") ?? "") ?? .auto
         self.fontSize = ud.integer(forKey: "reader.fontSize").nonZero ?? Self.defaultFontSize
         self.lineHeight = ud.double(forKey: "reader.lineHeight").nonZero ?? Self.defaultLineHeight
+        self.textAlign = ReaderTextAlign(rawValue: ud.string(forKey: "reader.textAlign") ?? "") ?? Self.defaultTextAlign
     }
 
     // MARK: - WebView attachment
@@ -167,6 +196,7 @@ final class IPhoneEPUBReaderStore {
         do {
             let epub = try BookContentLoader.load(from: bookURL)
             self.epubBook = epub
+            linkReturnStack.removeAll()
             await loadAnnotations()
             let (chapter, page) = parsePosition(book.lastCFI, in: epub)
             loadChapter(at: chapter, restorePage: page)
@@ -253,7 +283,8 @@ final class IPhoneEPUBReaderStore {
             applyAppearanceSettings()
             applyAnnotationsToCurrentChapter()
             let waitsForOffsetNavigation = applyPendingOffsetNavigationIfNeeded()
-            scheduleChapterReady(token: readyToken, waitsForOffsetNavigation: waitsForOffsetNavigation)
+            let waitsForAnchorNavigation = applyPendingAnchorNavigationIfNeeded()
+            scheduleChapterReady(token: readyToken, waitsForOffsetNavigation: waitsForOffsetNavigation || waitsForAnchorNavigation)
 
         case "pageChanged":
             if let page = data["page"] as? Int, let total = data["totalPages"] as? Int {
@@ -576,10 +607,15 @@ final class IPhoneEPUBReaderStore {
         webView?.evaluateJavaScript("window.__reader && window.__reader.setLineHeight(\(lineHeight));", completionHandler: nil)
     }
 
+    func applyTextAlign() {
+        webView?.evaluateJavaScript("window.__reader && window.__reader.setTextAlign('\(textAlign.rawValue)');", completionHandler: nil)
+    }
+
     private func applyAppearanceSettings() {
         if readerTheme != .auto                   { applyTheme() }
         if fontSize    != Self.defaultFontSize    { applyFontSize() }
         if lineHeight  != Self.defaultLineHeight  { applyLineHeight() }
+        applyTextAlign()
     }
 
     // MARK: - Search
@@ -622,6 +658,19 @@ final class IPhoneEPUBReaderStore {
         guard let target = EPUBPageMapper.target(forValidGlobalPage: page, counts: chapterPageCounts) else { return }
         loadChapter(at: target.chapterIndex, restorePage: target.pageInChapter)
         isMenuVisible = false
+    }
+
+    var hasLinkReturnPosition: Bool {
+        !linkReturnStack.isEmpty
+    }
+
+    func returnToPreviousLinkPosition() {
+        while let position = linkReturnStack.popLast() {
+            guard let epub = epubBook, epub.chapters.indices.contains(position.chapterIndex) else { continue }
+            goToOffset(chapterIndex: position.chapterIndex, offset: position.offset)
+            isMenuVisible = false
+            return
+        }
     }
 
     // MARK: - Helpers
@@ -714,23 +763,48 @@ final class IPhoneEPUBReaderStore {
     }
 
     private func handleLinkTapped(href: String) {
-        if href.hasPrefix("#") {
-            // Fragment within current chapter
-            let anchor = String(href.dropFirst())
-            let safe = anchor
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "'", with: "\\'")
-            webView?.evaluateJavaScript(
-                "window.__reader && window.__reader.goToAnchor('\(safe)');",
-                completionHandler: nil
-            )
-        } else {
-            // Cross-chapter link — navigate to chapter, ignore anchor for now
-            let hrefPart = EPUBBook.normalizeHref(href.components(separatedBy: "#")[0])
-            if let epub = epubBook, let idx = epub.chapterIndex(forHref: hrefPart) {
-                loadChapter(at: idx, restorePage: 0)
+        guard !isLinkNavigationInFlight else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            await self.navigateInternalLink(href: href)
+        }
+    }
+
+    private func navigateInternalLink(href: String) async {
+        guard let target = linkTarget(for: href) else { return }
+        isLinkNavigationInFlight = true
+        defer { isLinkNavigationInFlight = false }
+
+        let offset = await currentPageStartOffset()
+        linkReturnStack.append(LinkReturnPosition(chapterIndex: currentChapterIndex, offset: offset))
+        switch target {
+        case let .sameChapterAnchor(anchor):
+            evaluateGoToAnchor(anchor)
+        case let .chapter(chapterIndex, anchor):
+            if let anchor {
+                goToAnchor(chapterIndex: chapterIndex, anchor: anchor)
+            } else {
+                loadChapter(at: chapterIndex, restorePage: 0)
             }
         }
+    }
+
+    private enum InternalLinkTarget {
+        case sameChapterAnchor(String)
+        case chapter(chapterIndex: Int, anchor: String?)
+    }
+
+    private func linkTarget(for href: String) -> InternalLinkTarget? {
+        if href.hasPrefix("#") {
+            let anchor = String(href.dropFirst())
+            return anchor.isEmpty ? nil : .sameChapterAnchor(anchor)
+        }
+
+        let parts = href.components(separatedBy: "#")
+        let hrefPart = EPUBBook.normalizeHref(parts[0])
+        guard let epub = epubBook, let idx = epub.chapterIndex(forHref: hrefPart) else { return nil }
+        let anchor = parts.dropFirst().joined(separator: "#")
+        return .chapter(chapterIndex: idx, anchor: anchor.isEmpty ? nil : anchor)
     }
 
     private var currentChapterHref: String {
@@ -869,6 +943,19 @@ final class IPhoneEPUBReaderStore {
         }
     }
 
+    private func goToAnchor(chapterIndex: Int, anchor: String) {
+        guard let epub = epubBook, epub.chapters.indices.contains(chapterIndex) else { return }
+        offsetNavigationToken += 1
+        let token = offsetNavigationToken
+        if chapterIndex == currentChapterIndex {
+            pendingAnchorNavigation = nil
+            evaluateGoToAnchor(anchor)
+        } else {
+            pendingAnchorNavigation = (chapterIndex, anchor, token)
+            loadChapter(at: chapterIndex, restorePage: nil)
+        }
+    }
+
     @discardableResult
     private func applyPendingOffsetNavigationIfNeeded() -> Bool {
         guard let pending = pendingOffsetNavigation,
@@ -876,6 +963,40 @@ final class IPhoneEPUBReaderStore {
         pendingOffsetNavigation = nil
         evaluateGoToOffset(pending.offset, token: pending.token)
         return true
+    }
+
+    @discardableResult
+    private func applyPendingAnchorNavigationIfNeeded() -> Bool {
+        guard let pending = pendingAnchorNavigation,
+              pending.chapterIndex == currentChapterIndex else { return false }
+        pendingAnchorNavigation = nil
+        evaluateGoToAnchor(pending.anchor, token: pending.token)
+        return true
+    }
+
+    private func evaluateGoToAnchor(_ anchor: String, token: Int? = nil) {
+        let safe = jsEscapeString(anchor)
+        let guardedCall: String
+        if let token {
+            guardedCall = """
+            window.__readerPendingOffsetToken = \(token);
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                setTimeout(() => {
+                    if (window.__readerPendingOffsetToken !== \(token)) return;
+                    if (window.__reader && typeof window.__reader.goToAnchor === 'function') {
+                        window.__reader.goToAnchor("\(safe)");
+                    }
+                }, 160);
+            }));
+            """
+        } else {
+            guardedCall = """
+            if (window.__reader && typeof window.__reader.goToAnchor === 'function') {
+                window.__reader.goToAnchor("\(safe)");
+            }
+            """
+        }
+        webView?.evaluateJavaScript("(() => { \(guardedCall) })();", completionHandler: nil)
     }
 
     private func evaluateGoToOffset(_ offset: Int, token: Int) {
@@ -924,15 +1045,20 @@ final class IPhoneEPUBReaderStore {
                 pageInChapter: pageInChapter,
                 counts: chapterPageCounts
               ) else {
+            if globalPage != nil || totalBookPages != nil {
+                pageCalculationLog("global page invalidated counts=\(chapterPageCounts.count) chapters=\(epubBook?.chapters.count ?? 0) chapter=\(currentChapterIndex) page=\(pageInChapter)")
+            }
             globalPage = nil
             totalBookPages = nil
             return
         }
         globalPage = page
         totalBookPages = chapterPageCounts.reduce(0, +)
+        pageCalculationLog("global page ready page=\(page) total=\(totalBookPages ?? 0) chapter=\(currentChapterIndex) pageInChapter=\(pageInChapter)")
     }
 
     private func invalidatePageCountsAndRecalculate() {
+        pageCalculationLog("invalidate counts viewport=\(viewportWidth)x\(viewportHeight) safe=\(viewportSafeAreaTop)/\(viewportSafeAreaBottom) fs=\(fontSize) lh=\(lineHeight) align=\(textAlign.rawValue)")
         chapterPageCounts = []
         globalPage = nil
         totalBookPages = nil
@@ -944,20 +1070,31 @@ final class IPhoneEPUBReaderStore {
     }
 
     private func startPageCalculationIfPossible(for epub: any BookContentProvider) {
-        guard !epub.chapters.isEmpty else { return }
-        guard viewportWidth > 0, viewportHeight > 0 else { return }
+        guard !epub.chapters.isEmpty else {
+            pageCalculationLog("skip start: empty chapters")
+            return
+        }
+        guard viewportWidth > 0, viewportHeight > 0 else {
+            pageCalculationLog("skip start: zero viewport \(viewportWidth)x\(viewportHeight)")
+            return
+        }
         let layoutKey = BookPageLayoutKey(
             bookId: book.id,
             bookFileSignature: bookFileSignature(),
             fontSize: fontSize,
             lineHeight: lineHeight,
+            textAlign: textAlign.rawValue,
             viewportWidth: viewportWidth,
             viewportHeight: viewportHeight,
             safeAreaTop: viewportSafeAreaTop,
             safeAreaBottom: viewportSafeAreaBottom
         )
-        guard pageCalculationKey != layoutKey || pageCalculationState != .calculating else { return }
+        guard pageCalculationKey != layoutKey || pageCalculationState != .calculating else {
+            pageCalculationLog("skip start: already calculating same key \(layoutKey.debugSummary)")
+            return
+        }
         pageCalculationKey = layoutKey
+        pageCalculationLog("start possible key=\(layoutKey.debugSummary) chapters=\(epub.chapters.count)")
 
         if let cached = pageCountCache.load(layoutKey: layoutKey, chapterCount: epub.chapters.count) {
             chapterPageCounts = cached
@@ -973,12 +1110,14 @@ final class IPhoneEPUBReaderStore {
             guard let self else { return }
             guard self.pageCalculationKey == layoutKey,
                   EPUBPageMapper.isValid(counts: counts, chapterCount: epub.chapters.count) else {
+                pageCalculationLog("calculation failed validation counts=\(counts.count) chapters=\(epub.chapters.count) sum=\(counts.reduce(0, +)) expectedKey=\(layoutKey.debugSummary) currentKey=\(self.pageCalculationKey?.debugSummary ?? "nil")")
                 self.pageCalculationState = .failed
                 return
             }
             self.chapterPageCounts = counts
             self.pageCountCache.save(counts: counts, layoutKey: layoutKey, chapterCount: epub.chapters.count)
             self.pageCalculationState = .ready
+            pageCalculationLog("calculation ready counts=\(counts.count) sum=\(counts.reduce(0, +))")
             self.updateGlobalPage()
         }
     }

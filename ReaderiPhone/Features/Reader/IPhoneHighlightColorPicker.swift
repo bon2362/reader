@@ -6,10 +6,26 @@ struct IPhoneHighlightColorPicker: View {
     var activeColor: HighlightColor? = nil
     var showDelete: Bool = false
     var onDelete: (() -> Void)? = nil
+    var onCopy: (() -> Void)? = nil
     var onNote: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
+            if let onCopy {
+                Button {
+                    onCopy()
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Скопировать")
+
+                Divider()
+                    .frame(height: 22)
+            }
+
             ForEach(HighlightColor.allCases, id: \.self) { color in
                 Button {
                     if activeColor == color, let onDelete {

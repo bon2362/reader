@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct IPhoneEPUBReaderView: View {
     @State private var store: IPhoneEPUBReaderStore
@@ -11,6 +12,7 @@ struct IPhoneEPUBReaderView: View {
     @State private var isPageEntryVisible = false
     @State private var pageEntryText = ""
     @State private var isActionTrayVisible = false
+    @State private var isClosing = false
     @Environment(\.dismiss) private var dismiss
     private let onClose: (() -> Void)?
 
@@ -36,8 +38,6 @@ struct IPhoneEPUBReaderView: View {
             // MARK: Reading content
             IPhoneEPUBWebView(store: store)
                 .ignoresSafeArea()
-                .opacity(store.isChapterReady ? 1 : 0)
-                .animation(.easeIn(duration: 0.12), value: store.isChapterReady)
 
             if store.isLoading {
                 Color(UIColor.systemBackground).ignoresSafeArea()
@@ -60,7 +60,12 @@ struct IPhoneEPUBReaderView: View {
 
                 if isActionTrayVisible {
                     actionTray
-                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottomTrailing)))
+                }
+
+                if store.hasLinkReturnPosition, !store.isMenuVisible, !isActionTrayVisible {
+                    linkReturnButton
+                        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottomTrailing)))
                 }
 
                 // MARK: Annotation popups
@@ -79,13 +84,17 @@ struct IPhoneEPUBReaderView: View {
                 }
             }
         }
+        .opacity(isClosing ? 0 : 1)
+        .scaleEffect(isClosing ? 0.985 : 1)
+        .offset(y: isClosing ? 8 : 0)
         .animation(.easeInOut(duration: 0.2), value: store.isMenuVisible)
         .animation(.easeInOut(duration: 0.16), value: isActionTrayVisible)
         .animation(.easeInOut(duration: 0.25), value: isTOCVisible)
+        .animation(.easeInOut(duration: 0.18), value: isClosing)
         .toolbar(.hidden, for: .navigationBar)
         .onChange(of: store.requestDismiss) { _, requested in
             if requested {
-                closeReader()
+                requestCloseReader()
             }
         }
         .task {
@@ -166,11 +175,10 @@ struct IPhoneEPUBReaderView: View {
                     isActionTrayVisible = false
                     isTOCVisible.toggle()
                 } label: {
-                    Image(systemName: "list.bullet")
-                        .font(.system(size: 18, weight: .medium))
-                        .frame(width: 44, height: 44)
-                        .foregroundStyle(.primary)
+                    menuIcon("book.closed")
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Оглавление")
 
                 Spacer()
 
@@ -184,13 +192,12 @@ struct IPhoneEPUBReaderView: View {
 
                 Button {
                     isActionTrayVisible = false
-                    closeReader()
+                    requestCloseReader()
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 44, height: 44)
-                        .foregroundStyle(.primary)
+                    menuIcon("xmark")
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Закрыть")
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -218,11 +225,10 @@ struct IPhoneEPUBReaderView: View {
                 Button {
                     isActionTrayVisible.toggle()
                 } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 22))
-                        .frame(width: 44, height: 44)
-                        .foregroundStyle(.primary)
+                    menuIcon("ellipsis")
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Действия")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 4)
@@ -235,8 +241,8 @@ struct IPhoneEPUBReaderView: View {
             Spacer()
             HStack {
                 Spacer()
-                VStack(spacing: 4) {
-                    actionTrayButton("textformat.size", "Настройки") {
+                VStack(spacing: 8) {
+                    actionTrayButton("textformat", "Настройки") {
                         closeActionTrayAndMenu()
                         isSettingsVisible = true
                     }
@@ -244,7 +250,7 @@ struct IPhoneEPUBReaderView: View {
                         closeActionTrayAndMenu()
                         isSearchVisible = true
                     }
-                    actionTrayButton("note.text.badge.plus", "Заметка") {
+                    actionTrayButton("square.and.pencil", "Заметка") {
                         closeActionTrayAndMenu()
                         Task { noteDraft = await store.preparePageNoteDraft() }
                     }
@@ -253,10 +259,6 @@ struct IPhoneEPUBReaderView: View {
                         isAnnotationsVisible = true
                     }
                 }
-                .padding(8)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.08), lineWidth: 1))
-                .shadow(radius: 10, y: 3)
                 .padding(.trailing, 14)
                 .padding(.bottom, 58)
             }
@@ -268,6 +270,31 @@ struct IPhoneEPUBReaderView: View {
         }
     }
 
+    private var linkReturnButton: some View {
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                Button {
+                    store.returnToPreviousLinkPosition()
+                } label: {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 17, weight: .regular))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                        .background(.thinMaterial, in: Circle())
+                        .overlay(Circle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Вернуться")
+                .padding(.trailing, 14)
+                .padding(.bottom, 58)
+            }
+        }
+        .ignoresSafeArea()
+    }
+
     private func actionTrayButton(
         _ systemImage: String,
         _ accessibilityLabel: String,
@@ -275,13 +302,25 @@ struct IPhoneEPUBReaderView: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(.primary)
-                .frame(width: 42, height: 38)
-                .contentShape(Rectangle())
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(.secondary)
+                .frame(width: 44, height: 44)
+                .background(.thinMaterial, in: Circle())
+                .overlay(Circle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func menuIcon(_ systemImage: String) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 17, weight: .regular))
+            .foregroundStyle(.secondary)
+            .frame(width: 44, height: 44)
+            .background(.thinMaterial, in: Circle())
+            .overlay(Circle().stroke(Color.primary.opacity(0.08), lineWidth: 1))
+            .contentShape(Circle())
     }
 
     private func closeActionTrayAndMenu() {
@@ -294,6 +333,16 @@ struct IPhoneEPUBReaderView: View {
               let page = Int(pageEntryText.trimmingCharacters(in: .whitespacesAndNewlines)),
               (1...total).contains(page) else { return }
         store.goToGlobalPage(page)
+    }
+
+    private func requestCloseReader() {
+        guard !isClosing else { return }
+        isActionTrayVisible = false
+        isClosing = true
+        Task {
+            try? await Task.sleep(for: .milliseconds(180))
+            closeReader()
+        }
     }
 
     private func closeReader() {
@@ -316,7 +365,8 @@ struct IPhoneEPUBReaderView: View {
             let topY = sel.firstRect.minY - pickerHeight - gap
             let canFitBelow = bottomY + pickerHeight <= geo.size.height - safeBottom
             let canFitAbove = topY >= safeTop
-            let unclampedY = canFitBelow ? bottomY : (canFitAbove ? topY : (geo.size.height - pickerHeight) / 2)
+            // Prefer above the selection so the color picker stays clear of lower drag handles.
+            let unclampedY = canFitAbove ? topY : (canFitBelow ? bottomY : (geo.size.height - pickerHeight) / 2)
             let clampedY = min(max(safeTop, unclampedY), geo.size.height - pickerHeight - safeBottom)
             let editingHighlight = store.highlightForEditingId()
 
@@ -329,6 +379,10 @@ struct IPhoneEPUBReaderView: View {
                     onDelete: {
                         guard let editingHighlight else { return }
                         Task { await store.deleteHighlight(id: editingHighlight.id) }
+                    },
+                    onCopy: {
+                        copyToPasteboard(sel.text)
+                        store.dismissSelection()
                     },
                     onNote: {
                         Task {
@@ -351,6 +405,10 @@ struct IPhoneEPUBReaderView: View {
                     },
                     activeColor: h.color,
                     onDelete: { Task { await store.deleteHighlight(id: h.id) } },
+                    onCopy: {
+                        copyToPasteboard(h.selectedText ?? "")
+                        store.dismissSelection()
+                    },
                     onNote: {
                         Task {
                             noteDraft = await store.prepareHighlightNoteDraft()
@@ -365,12 +423,14 @@ struct IPhoneEPUBReaderView: View {
 
     private func pickerBackdrop<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         ZStack {
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture { store.dismissSelection() }
-
             content()
         }
+    }
+
+    private func copyToPasteboard(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        UIPasteboard.general.string = trimmed
     }
 
     // MARK: - Note view popup

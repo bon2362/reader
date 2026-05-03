@@ -56,6 +56,16 @@ struct IPhoneReaderSettingsView: View {
                     }
                     .padding(.vertical, 4)
                 }
+
+                // MARK: Text alignment
+                Section("Выравнивание") {
+                    HStack(spacing: 8) {
+                        ForEach(ReaderTextAlign.allCases, id: \.self) { alignment in
+                            textAlignButton(alignment)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
             }
             .navigationTitle("Настройки текста")
             .navigationBarTitleDisplayMode(.inline)
@@ -102,6 +112,26 @@ struct IPhoneReaderSettingsView: View {
             store.lineHeight = value
         } label: {
             Text(label)
+                .font(.subheadline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(isSelected ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.08))
+                .foregroundStyle(isSelected ? Color.accentColor : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func textAlignButton(_ alignment: ReaderTextAlign) -> some View {
+        let isSelected = store.textAlign == alignment
+        return Button {
+            store.textAlign = alignment
+        } label: {
+            Text(alignment.displayName)
                 .font(.subheadline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)

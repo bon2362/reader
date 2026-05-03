@@ -60,7 +60,7 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
         config.userContentController.add(handler, name: "native")
         context.coordinator.handler = handler
 
-        let webView = WKWebView(frame: .zero, configuration: config)
+        let webView = ReaderWKWebView(frame: .zero, configuration: config)
         // Transparent WebView — SwiftUI container provides the background colour.
         // Without this, WKWebView draws black in dark mode, hiding EPUB text.
         webView.isOpaque = false
@@ -193,6 +193,7 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
 
         var __wrap = null;
         var __page = 0;
+        var __transitionEnabled = true;
 
         function setupLayout() {
             var style = document.createElement('style');
@@ -200,13 +201,15 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 'html, body { margin:0; padding:0; overflow: hidden; height: 100vh; width: 100vw; background: transparent; color: #000;',
                 '  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", serif;',
                 '  font-size: 17px; line-height: 1.65; text-align: start;',
-                '  -webkit-user-select: text; user-select: text;',
+                '  -webkit-user-select: text; user-select: text; -webkit-touch-callout: none;',
                 '}',
                 '#__reader_wrap { padding: calc(env(safe-area-inset-top) + var(--reader-safe-area-top, 0px) + 56px) 24px calc(env(safe-area-inset-bottom) + var(--reader-safe-area-bottom, 0px) + 56px) 24px; box-sizing: border-box;',
                 '  column-width: calc(100vw - 48px); column-gap: 48px; column-fill: auto;',
-                '  height: 100vh; width: 100vw;',
-                '  will-change: transform; transition: none;',
+                '  height: 100vh; width: 100vw; position: relative; left: 0;',
+                '  will-change: left; transition: left 220ms cubic-bezier(0.4, 0.0, 0.2, 1);',
                 '}',
+                '#__reader_wrap, #__reader_wrap * { -webkit-user-select: text; user-select: text; -webkit-touch-callout: none; }',
+                '#__reader_wrap ::selection { background: rgba(0, 122, 255, 0.28) !important; color: inherit !important; }',
                 '#__reader_wrap p, #__reader_wrap li, #__reader_wrap blockquote { text-align: start !important; }',
                 'img, svg, video { max-width: 100% !important; max-height: 90vh !important; height: auto !important; }',
                 'mark.reader-hl { border-radius: 2px; padding: 0 1px; cursor: pointer; }',
@@ -234,7 +237,24 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
         function currentPage() { return __page; }
         function applyTransform() {
             if (!__wrap) return;
-            __wrap.style.transform = 'translateX(' + (-__page * pageSize()) + 'px)';
+            __wrap.style.transform = 'none';
+            __wrap.style.left = (-__page * pageSize()) + 'px';
+        }
+        function setTransitionEnabled(enabled) {
+            __transitionEnabled = enabled;
+            if (!__wrap) return;
+            __wrap.style.transition = enabled ? 'left 220ms cubic-bezier(0.4, 0.0, 0.2, 1)' : 'none';
+        }
+        function restoreTransitionSoon() {
+            setTimeout(function() { setTransitionEnabled(true); }, 0);
+        }
+        function setPage(i, animated) {
+            var max = totalPages() - 1;
+            __page = Math.min(Math.max(0, i), max);
+            if (animated === false) setTransitionEnabled(false);
+            applyTransform();
+            if (animated === false && __transitionEnabled === false) restoreTransitionSoon();
+            setTimeout(reportPage, 0);
         }
 
         function reportPage() {
@@ -252,14 +272,11 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
             currentPage: function() { return currentPage(); },
             totalPages: function() { return totalPages(); },
             goToPage: function(i) {
-                var max = totalPages() - 1;
-                __page = Math.min(Math.max(0, i), max);
-                applyTransform();
-                setTimeout(reportPage, 0);
+                setPage(i, true);
             },
             nextPage: function() { this.goToPage(currentPage() + 1); },
             prevPage: function() { this.goToPage(currentPage() - 1); },
-            goToLastPage: function() { this.goToPage(totalPages() - 1); },
+            goToLastPage: function() { setPage(totalPages() - 1, false); },
             goToAnchor: function(id) {
                 if (!id || !__wrap) return;
                 var el = null;
@@ -269,20 +286,22 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                     try { el = document.querySelector('[name="' + nameEsc + '"]'); } catch (e) {}
                 }
                 if (!el) return;
-                // Reset transform so getBoundingClientRect returns untranslated coords.
-                __wrap.style.transform = 'translateX(0px)';
+                // Reset page offset so getBoundingClientRect returns untranslated coords.
+                setTransitionEnabled(false);
+                __wrap.style.left = '0px';
                 var r = el.getBoundingClientRect();
                 var target = Math.max(0, Math.floor(r.left / pageSize()));
-                this.goToPage(target);
+                setPage(target, false);
             },
             goToOffset: function(offset) {
                 if (!__wrap) return;
                 var rng = rangeForOffsets(offset, Math.max(offset + 1, offset));
                 if (!rng) return;
-                __wrap.style.transform = 'translateX(0px)';
+                setTransitionEnabled(false);
+                __wrap.style.left = '0px';
                 var r = rng.getBoundingClientRect();
                 var target = Math.max(0, Math.floor(r.left / pageSize()));
-                this.goToPage(target);
+                setPage(target, false);
             },
             currentPageStartOffset: function() {
                 if (!__wrap) return 0;
@@ -305,7 +324,8 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                     }
                 }
                 try {
-                    __wrap.style.transform = 'translateX(0px)';
+                    setTransitionEnabled(false);
+                    __wrap.style.left = '0px';
                     for (var i = 0; i < nodes.length; i++) {
                         var n = nodes[i];
                         var len = n.nodeValue.length;
@@ -329,6 +349,7 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                     return offset;
                 } finally {
                     applyTransform();
+                    restoreTransitionSoon();
                 }
             },
             applyHighlights: function(list) {
@@ -385,6 +406,20 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
                 var s = document.createElement('style');
                 s.id = '__reader_lh';
                 s.textContent = 'html,body{line-height:' + v + '!important}';
+                document.head.appendChild(s);
+                setTimeout(function() {
+                    var max = totalPages() - 1;
+                    if (__page > max) __page = max;
+                    applyTransform(); reportPage();
+                }, 120);
+            },
+            setTextAlign: function(value) {
+                var cssValue = value === 'justify' ? 'justify' : 'start';
+                var el = document.getElementById('__reader_align');
+                if (el) el.parentNode.removeChild(el);
+                var s = document.createElement('style');
+                s.id = '__reader_align';
+                s.textContent = '#__reader_wrap p, #__reader_wrap li, #__reader_wrap blockquote { text-align:' + cssValue + ' !important; }';
                 document.head.appendChild(s);
                 setTimeout(function() {
                     var max = totalPages() - 1;
@@ -653,6 +688,12 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
             }
         }, true);
 
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }, true);
+
         function isEditableTarget(t) {
             if (!t) return false;
             var tag = (t.tagName || '').toLowerCase();
@@ -702,4 +743,34 @@ struct IPhoneEPUBWebView: UIViewRepresentable {
         }
     })();
     """
+}
+
+private final class ReaderWKWebView: WKWebView {
+    private static let suppressedEditActionNames: Set<String> = [
+        "copy:",
+        "cut:",
+        "paste:",
+        "select:",
+        "selectAll:",
+        "lookup:",
+        "_lookup:",
+        "define:",
+        "_define:",
+        "translate:",
+        "_translate:",
+        "share:",
+        "_share:",
+        "_promptForReplace:",
+        "_addShortcut:",
+        "_accessibilitySpeak:",
+        "_accessibilitySpeakLanguageSelection:",
+        "_accessibilityPauseSpeaking:"
+    ]
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if Self.suppressedEditActionNames.contains(NSStringFromSelector(action)) {
+            return false
+        }
+        return super.canPerformAction(action, withSender: sender)
+    }
 }

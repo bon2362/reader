@@ -7,10 +7,15 @@ struct BookPageLayoutKey: Codable, Equatable {
     let bookFileSignature: String
     let fontSize: Int
     let lineHeight: Double
+    let textAlign: String
     let viewportWidth: Int
     let viewportHeight: Int
     let safeAreaTop: Int
     let safeAreaBottom: Int
+
+    var debugSummary: String {
+        "\(bookId) sig=\(bookFileSignature) fs=\(fontSize) lh=\(lineHeight) align=\(textAlign) viewport=\(viewportWidth)x\(viewportHeight) safe=\(safeAreaTop)/\(safeAreaBottom)"
+    }
 }
 
 enum BookPageCalculationState: Equatable {
@@ -47,20 +52,26 @@ final class BookPageCountCache {
               entry.layoutKey == layoutKey,
               entry.chapterCount == chapterCount,
               EPUBPageMapper.isValid(counts: entry.counts, chapterCount: chapterCount) else {
+            pageCalculationLog("cache miss key=\(layoutKey.debugSummary) chapters=\(chapterCount)")
             return nil
         }
+        pageCalculationLog("cache hit key=\(layoutKey.debugSummary) chapters=\(chapterCount) sum=\(entry.counts.reduce(0, +))")
         return entry.counts
     }
 
     func save(counts: [Int], layoutKey: BookPageLayoutKey, chapterCount: Int) {
-        guard EPUBPageMapper.isValid(counts: counts, chapterCount: chapterCount) else { return }
+        guard EPUBPageMapper.isValid(counts: counts, chapterCount: chapterCount) else {
+            pageCalculationLog("skip cache save invalid counts=\(counts.count) chapters=\(chapterCount)")
+            return
+        }
         let entry = Entry(layoutKey: layoutKey, chapterCount: chapterCount, counts: counts, updatedAt: Date())
         guard let data = try? encoder.encode(entry) else { return }
         try? data.write(to: cacheURL(for: layoutKey), options: [.atomic])
+        pageCalculationLog("cache save key=\(layoutKey.debugSummary) chapters=\(chapterCount) sum=\(counts.reduce(0, +))")
     }
 
     private func cacheURL(for key: BookPageLayoutKey) -> URL {
-        let raw = "\(key.bookId)-\(key.bookFileSignature)-\(key.fontSize)-\(key.lineHeight)-\(key.viewportWidth)x\(key.viewportHeight)-safe\(key.safeAreaTop)-\(key.safeAreaBottom)"
+        let raw = "\(key.bookId)-\(key.bookFileSignature)-\(key.fontSize)-\(key.lineHeight)-align\(key.textAlign)-\(key.viewportWidth)x\(key.viewportHeight)-safe\(key.safeAreaTop)-\(key.safeAreaBottom)"
         let safe = raw.map { ch -> Character in
             ch.isLetter || ch.isNumber || ch == "-" || ch == "." ? ch : "_"
         }
@@ -90,13 +101,17 @@ final class BookPageCalculator {
         let viewportScript = WKUserScript(
             source: """
             (function() {
-                var meta = document.querySelector('meta[name="viewport"]');
-                if (!meta) {
-                    meta = document.createElement('meta');
+                var existing = document.querySelector('meta[name="viewport"]');
+                var content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+                if (existing) {
+                    existing.setAttribute('content', content);
+                } else {
+                    var meta = document.createElement('meta');
                     meta.name = 'viewport';
-                    (document.head || document.documentElement).appendChild(meta);
+                    meta.content = content;
+                    var head = document.head || document.documentElement;
+                    if (head) head.insertBefore(meta, head.firstChild);
                 }
-                meta.content = 'width=device-width, initial-scale=1.0';
             })();
             """,
             injectionTime: .atDocumentStart,
@@ -112,7 +127,7 @@ final class BookPageCalculator {
         self.handler = MessageHandler()
         config.userContentController.add(handler, name: "native")
         self.webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), configuration: config)
-        self.webView.isHidden = true
+        self.webView.alpha = 0.01
         self.webView.scrollView.isScrollEnabled = false
         handler.owner = self
     }
@@ -143,6 +158,7 @@ final class BookPageCalculator {
             width: CGFloat(max(1, layoutKey.viewportWidth)),
             height: CGFloat(max(1, layoutKey.viewportHeight))
         )
+        pageCalculationLog("calculator start key=\(layoutKey.debugSummary) chapters=\(book.chapters.count)")
         measureNextChapter(session: session)
     }
 
@@ -163,9 +179,11 @@ final class BookPageCalculator {
             let finish = completion
             completion = nil
             isActive = false
+            pageCalculationLog("calculator complete counts=\(result.count) sum=\(result.reduce(0, +))")
             finish?(result)
             return
         }
+        pageCalculationLog("measure chapter \(chapterIndex + 1)/\(chapters.count) href=\(chapters[chapterIndex].href)")
         webView.loadFileURL(chapters[chapterIndex].fileURL, allowingReadAccessTo: rootDir)
     }
 
@@ -178,6 +196,7 @@ final class BookPageCalculator {
             guard chapters.indices.contains(chapterIndex) else { return }
             if let href = dict["href"] as? String,
                URL(string: href)?.standardizedFileURL != chapters[chapterIndex].fileURL.standardizedFileURL {
+                pageCalculationLog("ready href mismatch href=\(href) expected=\(chapters[chapterIndex].fileURL.absoluteString)")
                 return
             }
             applyLayoutAndReadTotal(session: generation, measuredChapterIndex: chapterIndex)
@@ -193,6 +212,7 @@ final class BookPageCalculator {
             document.documentElement.style.setProperty('--reader-safe-area-bottom', '\(layoutKey.safeAreaBottom)px');
             if (typeof window.__reader.setFontSize === 'function') window.__reader.setFontSize(\(layoutKey.fontSize));
             if (typeof window.__reader.setLineHeight === 'function') window.__reader.setLineHeight(\(layoutKey.lineHeight));
+            if (typeof window.__reader.setTextAlign === 'function') window.__reader.setTextAlign('\(layoutKey.textAlign)');
             return new Promise(resolve => {
                 requestAnimationFrame(() => requestAnimationFrame(() => {
                     setTimeout(() => resolve(
@@ -221,6 +241,7 @@ final class BookPageCalculator {
                 if self.counts.indices.contains(self.chapterIndex), self.counts[self.chapterIndex] == 0 {
                     self.counts[self.chapterIndex] = max(1, total)
                 }
+                pageCalculationLog("measured chapter \(self.chapterIndex + 1) pages=\(max(1, total))")
                 self.measureNextChapter(session: session)
             }
         }
@@ -236,4 +257,10 @@ final class BookPageCalculator {
             }
         }
     }
+}
+
+func pageCalculationLog(_ message: String) {
+#if DEBUG
+    NSLog("[IPhoneEPUBReader][PageCalc] %@", message)
+#endif
 }
