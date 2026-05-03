@@ -109,6 +109,7 @@
 		B82D4C47236A610379F3E598 /* Migration_002.swift in Sources */ = {isa = PBXBuildFile; fileRef = FADF34C3BC64D4841605BC39 /* Migration_002.swift */; };
 		BB342E95D3BAF8BE86287A59 /* PDFReadingProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A72702ADA1F3BCDD4BA84D /* PDFReadingProgress.swift */; };
 		BF808E86179EADAAA69ED85F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0F12580582B61E83294531E6 /* Assets.xcassets */; };
+		AA11BB22CC33DD44EE550001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0F12580582B61E83294531E6 /* Assets.xcassets */; };
 		BFD366F22FE1CA8D38C67DE8 /* EPUBBridgeProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D1D4731F84921D79AA1E988 /* EPUBBridgeProtocol.swift */; };
 		C0110287ABDB22E5FDA68D20 /* NativeEPUBBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA72A801592D4B702C802229 /* NativeEPUBBridge.swift */; };
 		C183273880242187E80D5215 /* AnnotationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01FD7A8708E9BD7C3B31B8E /* AnnotationRepository.swift */; };
@@ -720,6 +721,7 @@
 			buildConfigurationList = 8E31D337172D9E3B635A172E /* Build configuration list for PBXNativeTarget "ReaderiPhone" */;
 			buildPhases = (
 				5F620F138DF06118B2FA9502 /* Sources */,
+				AA11BB22CC33DD44EE550002 /* Resources */,
 				989368A34AFD1FCE86EC7885 /* Frameworks */,
 			);
 			buildRules = (
@@ -783,6 +785,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				BF808E86179EADAAA69ED85F /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA11BB22CC33DD44EE550002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA11BB22CC33DD44EE550001 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
